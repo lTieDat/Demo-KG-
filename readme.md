@@ -16,14 +16,31 @@ venv\Scripts\activate
 3. Cài đặt dependencies:
 
 ```bash
+
+```
+
+3. Cài đặt dependencies:
+
+```bash
 pip install -r requirements.txt
 pip install git+https://github.com/RUCAIBox/RecBole-KG.git
 ```
 
 4. Chạy ứng dụng Streamlit:
 
+````
+
+4. Chạy ứng dụng Streamlit:
+
+```bash
 ```bash
 streamlit run app.py
+````
+
+---
+
+# Đánh giá kết quả
+
 ```
 
 ---
@@ -31,12 +48,20 @@ streamlit run app.py
 # Đánh giá kết quả
 
 **Trải nghiệm người dùng thực tế**
+**Trải nghiệm người dùng thực tế**
 
-- **Case study / manual check:**  
+- **Case study / manual check:**
+  Nhập `user_id` quen thuộc (biết rõ lịch sử tương tác) để xem top-10 có “hợp gu” không.
+- **Case study / manual check:**
   Nhập `user_id` quen thuộc (biết rõ lịch sử tương tác) để xem top-10 có “hợp gu” không.
 
-- **A/B testing:**  
+- **A/B testing:**
+  Nếu deploy, so sánh kết quả recommendation giữa nhiều model khác nhau trên nhóm user thật.
+- **A/B testing:**
   Nếu deploy, so sánh kết quả recommendation giữa nhiều model khác nhau trên nhóm user thật.
 
-- **User feedback:**  
+- **User feedback:**
   Cho người dùng chấm điểm mức độ hài lòng hoặc đo click-through rate (CTR).
+- **User feedback:**
+  Cho người dùng chấm điểm mức độ hài lòng hoặc đo click-through rate (CTR).
+```
