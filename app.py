@@ -32,16 +32,26 @@ try:
 except ImportError:
     LLM_AVAILABLE = False
 
-# Cấu hình - Sử dụng đường dẫn tương đối
+# Cấu hình - Sử dụng đường dẫn tương đối (hỗ trợ local + Streamlit Cloud)
 import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent
-MODEL_DIR = str(BASE_DIR / "saved")
 
-# RecBole directory - tùy chỉnh nếu cần
-RECBOLE_BASE_DIR = Path(__file__).parent.parent / "RecBole"
-RECBOLE_MODEL_DIR = str(RECBOLE_BASE_DIR / "saved")
+# Model directory - thử ../saved trước (local), rồi ./saved (Streamlit Cloud)
+MODEL_DIR_PARENT = str(BASE_DIR.parent / "saved")
+MODEL_DIR_LOCAL = str(BASE_DIR / "saved")
+MODEL_DIR = MODEL_DIR_PARENT if Path(MODEL_DIR_PARENT).exists() else MODEL_DIR_LOCAL
+
+# RecBole directory - thử ../RecBole trước (local), rồi không có (Streamlit Cloud)
+RECBOLE_BASE_DIR = BASE_DIR.parent / "RecBole"
+RECBOLE_MODEL_DIR_PARENT = str(RECBOLE_BASE_DIR / "saved")
+RECBOLE_MODEL_DIR_LOCAL = str(BASE_DIR / "saved")
+RECBOLE_MODEL_DIR = (
+    RECBOLE_MODEL_DIR_PARENT
+    if Path(RECBOLE_MODEL_DIR_PARENT).exists()
+    else RECBOLE_MODEL_DIR_LOCAL
+)
 
 # Thêm RecBole vào path nếu thư mục tồn tại
 if RECBOLE_BASE_DIR.exists():
@@ -50,7 +60,6 @@ if RECBOLE_BASE_DIR.exists():
 # Page config
 st.set_page_config(
     page_title="KGCN Exercise Recommender",
-    page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded",
 )
