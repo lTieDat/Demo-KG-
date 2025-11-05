@@ -5,11 +5,13 @@ Demo script để test Ollama trước khi tích hợp vào hệ thống chính
 import requests
 import json
 import time
+import os
 
 
 class OllamaDemo:
-    def __init__(self, base_url="http://localhost:11434"):
-        self.base_url = base_url
+    def __init__(self, base_url=None):
+        # Use provided URL, environment variable, or default to localhost
+        self.base_url = base_url or os.getenv("OLLAMA_URL", "http://localhost:11434")
 
     def check_connection(self):
         """Kiểm tra kết nối Ollama server"""

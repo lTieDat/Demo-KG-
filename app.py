@@ -32,10 +32,20 @@ try:
 except ImportError:
     LLM_AVAILABLE = False
 
-# Cấu hình
-MODEL_DIR = r"saved"
-RECBOLE_MODEL_DIR = r"E:\DoAn\RecBole\saved"
-sys.path.append(r"E:\DoAn\RecBole")
+# Cấu hình - Sử dụng đường dẫn tương đối
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).parent
+MODEL_DIR = str(BASE_DIR / "saved")
+
+# RecBole directory - tùy chỉnh nếu cần
+RECBOLE_BASE_DIR = Path(__file__).parent.parent / "RecBole"
+RECBOLE_MODEL_DIR = str(RECBOLE_BASE_DIR / "saved")
+
+# Thêm RecBole vào path nếu thư mục tồn tại
+if RECBOLE_BASE_DIR.exists():
+    sys.path.insert(0, str(RECBOLE_BASE_DIR))
 
 # Page config
 st.set_page_config(

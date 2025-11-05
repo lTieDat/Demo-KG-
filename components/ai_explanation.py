@@ -21,7 +21,7 @@ class AIExplanationComponent:
             return None, None
 
         st.markdown(
-            '<div class="section-header">🤖 Giải Thích Bằng AI (Ollama)</div>',
+            '<div class="section-header">Giải Thích Bằng AI (Ollama)</div>',
             unsafe_allow_html=True,
         )
 
@@ -34,9 +34,11 @@ class AIExplanationComponent:
             )
 
         with col2:
+            default_url = st.session_state.get("ollama_url", "http://localhost:11434")
             base_url = st.text_input(
-                "Ollama URL:", "http://localhost:11434", key="global_ollama_url"
+                "Ollama URL:", default_url, key="global_ollama_url"
             )
+            st.session_state["ollama_url"] = base_url
 
         col_test, col_explain = st.columns(2)
 

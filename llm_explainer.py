@@ -101,10 +101,13 @@ class OllamaExplainer:
     """
 
     def __init__(
-        self, model_name: str = "llama2", base_url: str = "http://localhost:11434"
+        self, model_name: str = "llama2", base_url: str = None
     ):
+        import os
+        
         self.model_name = model_name
-        self.base_url = base_url
+        # Use provided URL, environment variable, or default to localhost
+        self.base_url = base_url or os.getenv("OLLAMA_URL", "http://localhost:11434")
 
         try:
             import requests

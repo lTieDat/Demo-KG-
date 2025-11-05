@@ -1,4 +1,4 @@
-data_path: E:/DoAn/RecBole/dataset/
+data_path: ../RecBole/dataset/
 dataset: code-ptit-100k
 user_inter_num_interval: '[0,98)'
 embedding_size: 32

@@ -3,7 +3,7 @@
 1. Mở terminal và chuyển tới thư mục dự án:
 
 ```bash
-cd E:\DoAn\demo
+cd Web
 ```
 
 2. Tạo và kích hoạt virtual environment:
