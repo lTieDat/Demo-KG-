@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from pathlib import Path
 
 
 def load_item_details():
@@ -9,20 +10,22 @@ def load_item_details():
     Returns:
         dict: Dictionary mapping item_id -> item_info
     """
+    # Sử dụng relative paths dựa trên vị trí của file này
+    base_dir = Path(__file__).parent
+    
     # Các đường dẫn có thể chứa file
     possible_paths = [
-        "dataset/code-ptit-100k.item",
-        "./dataset/code-ptit-100k.item",
-        "../dataset/code-ptit-100k.item",
-        "e:/DoAn/Web/dataset/code-ptit-100k.item",
+        base_dir / "dataset" / "code-ptit-100k.item",
+        Path.cwd() / "dataset" / "code-ptit-100k.item",
+        base_dir.parent / "Web" / "dataset" / "code-ptit-100k.item",
     ]
 
     item_file = None
 
     # Thử tất cả các đường dẫn có thể
     for path in possible_paths:
-        if os.path.exists(path):
-            item_file = path
+        if path.exists():
+            item_file = str(path)
             print(f"Found item file at: {path}")
             break
 

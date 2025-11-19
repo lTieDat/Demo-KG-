@@ -1,8 +1,12 @@
-# app.py
+# app.py - Refactored with Clean Architecture
 import streamlit as st
 import os
 import sys
 import torch
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
 
 # Patch DGL's edge_subgraph to handle preserve_nodes parameter
 import dgl
@@ -15,35 +19,35 @@ def patched_edge_subgraph(self, edges, *args, **kwargs):
 
 dgl.DGLGraph.edge_subgraph = patched_edge_subgraph
 
-# Monkey-patch to handle missing KGAT_UserKG class
-from recbole.model.knowledge_aware_recommender import KGAT
-import recbole.model.knowledge_aware_recommender.kgat as kgat_module
+# Monkey-patch to handle missing KGCN_UserKG class
+from recbole.model.knowledge_aware_recommender import KGCN
+import recbole.model.knowledge_aware_recommender.kgcn as kgcn_module
 
-# Add KGAT_UserKG as an alias to KGAT in the kgat module
-kgat_module.KGAT_UserKG = KGAT
+# Add KGCN_UserKG as an alias to KGCN in the kgcn module
+kgcn_module.KGCN_UserKG = KGCN
 
-# Create a fake kgat_userkg module that points to the kgat module
-sys.modules['recbole.model.knowledge_aware_recommender.kgat_userkg'] = kgat_module
+# Create a fake kgcn_userkg module that points to the kgcn module
+sys.modules['recbole.model.knowledge_aware_recommender.kgcn_userkg'] = kgcn_module
 
 from recbole.quick_start import load_data_and_model
 from recbole.data.interaction import Interaction
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
 from recbole.utils import init_seed, init_logger
-from recbole.model.knowledge_aware_recommender import KGAT
+from recbole.model.knowledge_aware_recommender import KGCN
 
 # Import utilities
 from item_utils import load_item_details, get_item_display_info
 
-# LLM Explainer (tích hợp Ollama)
+# LLM Explainer
 try:
-    from llm_explainer import LLMExplainer, OllamaExplainer, LocalLLMExplainer
+    from llm_explainer import LLMExplainer, OllamaExplainer, LocalLLMExplainer, MistralCloudExplainer
 
     LLM_AVAILABLE = True
 except ImportError:
     LLM_AVAILABLE = False
     st.warning(
-        "LLM Explainer không available. Cài đặt thư viện: pip install openai requests"
+        "LLM Explainer không available. Cài đặt thư viện: pip install openai requests mistralai"
     )
 
 # Thư mục chứa model (relative path)
@@ -150,7 +154,7 @@ def load_trained_model(model_path, config_file="config.yaml"):
         # Sử dụng config local và load state_dict
         if os.path.exists(config_file):
             st.info("Đang load model từ config.yaml và state_dict...")
-            config = Config(model="KGAT", config_file_list=[config_file])
+            config = Config(model="KGCN", config_file_list=[config_file])
             
             # Override dataset path to use relative path instead of absolute
             config['data_path'] = 'dataset'
@@ -162,7 +166,7 @@ def load_trained_model(model_path, config_file="config.yaml"):
             train_data, valid_data, test_data = data_preparation(config, dataset)
 
             # Khởi tạo model với config local
-            model = KGAT(config, dataset).to(config["device"])
+            model = KGCN(config, dataset).to(config["device"])
 
             # Load state_dict từ checkpoint
             try:
@@ -304,39 +308,45 @@ st.markdown("""
         .stContainer, div[data-testid="column"] {
             animation: fadeIn 0.5s ease-out;
         }
-        /* Card styles with hover animation and improved padding/margin */
+        /* Card styles with hover animation and consistent padding */
         .recommendation-card {
             border: 1px solid #e0e0e0;
             border-radius: 12px;
-            padding: 25px;
-            margin: 20px 10px;
+            padding: 25px 30px;
+            margin: 20px 15px;
             background-color: white;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             transition: all 0.3s ease;
         }
         .recommendation-card:hover {
-            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
             transform: translateY(-5px);
+            padding: 25px 30px; /* Keep padding consistent on hover */
         }
         .recommendation-card h4 {
-            margin-top: 0;
+            margin: 0 0 12px 0;
             color: #1f77b4;
         }
         .recommendation-card p {
             margin: 8px 0;
             color: #555;
+            line-height: 1.4;
         }
         /* Expander animation */
         .stExpander {
             transition: all 0.3s ease;
         }
-        /* Loading animation enhancement */
-        .stSpinner {
-            animation: spin 1s linear infinite;
+        /* Loading animation - apply only to spinner icon */
+        .stSpinner > div > div {
+            animation: spin 1s linear infinite !important;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        /* Prevent text from spinning */
+        .stSpinner > span {
+            animation: none !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -578,9 +588,9 @@ if (
 
             try:
                 with st.spinner("Đang tạo gợi ý..."):
-                    recs = get_top_k_recommendations(model, dataset, user_id, topk=topk)
-
-                    # Load thông tin chi tiết về bài tập từ file local
+                    recs = get_top_k_recommendations(
+                        model, dataset, user_id, topk=topk
+                    )
                     item_details = load_item_details()
 
                 if input_method == "Dropdown mã sinh viên":
@@ -680,62 +690,46 @@ if (
                 st.error("Chi tiết lỗi:")
                 st.code(str(e))
 
-# ===== GIAO DIỆN OLLAMA (LUÔN HIỂN THỊ) =====
+# ===== GIAO DIỆN AI EXPLAINER =====
 if LLM_AVAILABLE:
-    st.subheader("Giải Thích Bằng AI (Ollama)")
+    st.subheader("Giải Thích Bằng AI")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        model_options = ["mistral", "llama2", "phi3:mini", "codellama"]
-        model_name = st.selectbox(
-            "Model:", model_options, index=0, key="global_ollama_model"
+    # Chọn loại AI service
+    ai_service = st.radio(
+        "Chọn dịch vụ AI:",
+        ["Mistral Cloud", "Ollama (Local)"],
+        horizontal=True,
+        key="ai_service_selector"
+    )
+
+    if ai_service == "Mistral Cloud":
+        st.markdown("#### Cấu hình Mistral AI")
+        
+        # Load API key from environment
+        mistral_api_key = os.getenv("MISTRALAI_API_KEY")
+        
+        if mistral_api_key:
+            st.success("✓ API Key đã được load từ biến môi trường")
+        else:
+            st.error("⚠️ Không tìm thấy MISTRALAI_API_KEY trong file .env")
+            st.info("Vui lòng thêm MISTRALAI_API_KEY vào file .env")
+        
+        mistral_model = st.selectbox(
+            "Model:",
+            ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
+            index=0,
+            key="mistral_model"
         )
-    with col2:
-        base_url = st.text_input(
-            "Ollama URL:", "http://localhost:11434", key="global_ollama_url"
-        )
 
-    # Test connection và Create explanation
-    col_test, col_explain = st.columns(2)
-
-    with col_test:
-        if st.button("Test kết nối", key="global_test_connection"):
-            with st.spinner("Đang kiểm tra kết nối..."):
-                try:
-                    import requests
-
-                    response = requests.get(f"{base_url}/api/tags", timeout=5)
-                    if response.status_code == 200:
-                        models = response.json().get("models", [])
-                        model_names = [m["name"] for m in models]
-                        if model_names:
-                            st.success(f"Models: {', '.join(model_names)}")
-                        else:
-                            st.warning("Chưa có model. Chạy: `ollama pull mistral`")
-                    else:
-                        st.error("Server không phản hồi")
-                except Exception as e:
-                    st.error(f"Lỗi: {str(e)}")
-                    st.info("Chạy: `ollama serve`")
-
-    with col_explain:
-        if st.button(
-            "Tạo giải thích", type="primary", key="global_create_explanation"
-        ):
-            # Kiểm tra có kết quả gợi ý không
-            if (
-                "current_recs" not in st.session_state
-                or not st.session_state.current_recs
-            ):
+        if st.button("Tạo giải thích với Mistral", type="primary", key="mistral_explain", disabled=not mistral_api_key):
+            if "current_recs" not in st.session_state or not st.session_state.current_recs:
                 st.error("Vui lòng tạo gợi ý bài tập trước!")
             else:
                 try:
-                    # Sử dụng dữ liệu từ session_state
                     user_id = st.session_state.current_user
                     recs = st.session_state.current_recs
                     item_details = st.session_state.current_items
 
-                    # Chuẩn bị dữ liệu
                     student_code = (
                         user_id2token[user_id]
                         if user_id < len(user_id2token)
@@ -744,32 +738,114 @@ if LLM_AVAILABLE:
 
                     rec_data = []
                     for item_internal_id, item_external_id, score in recs:
-                        item_info = get_item_display_info(
-                            item_external_id, item_details
-                        )
-                        rec_data.append(
-                            {
-                                "title": item_info["title"],
-                                "topic": item_info["topic"],
-                                "difficulty": item_info["difficulty"],
-                                "score": score,
-                            }
-                        )
+                        item_info = get_item_display_info(item_external_id, item_details)
+                        rec_data.append({
+                            "title": item_info["title"],
+                            "topic": item_info["topic"],
+                            "difficulty": item_info["difficulty"],
+                            "score": score,
+                        })
 
-                    explainer = OllamaExplainer(model_name, base_url)
+                    explainer = MistralCloudExplainer(mistral_api_key, mistral_model)
 
-                    with st.spinner(f"Đang xử lý với {model_name}..."):
-                        explanation = explainer.explain_recommendations(
-                            student_code, rec_data
-                        )
+                    with st.spinner(f"Đang xử lý với {mistral_model}..."):
+                        explanation = explainer.explain_recommendations(student_code, rec_data)
 
-                    # Lưu explanation vào session_state
                     st.session_state.explanation = explanation
                     st.success("Giải thích đã được tạo! Xem bên dưới.")
 
                 except Exception as e:
-                    st.error(f"Lỗi Ollama: {str(e)}")
-                    st.info("Thử: `ollama serve` và `ollama pull mistral`")
+                    st.error(f"Lỗi Mistral AI: {str(e)}")
+                    st.info("Kiểm tra API key và kết nối internet")
+
+    else:  # Ollama (Local)
+        st.markdown("#### Cấu hình Ollama")
+        col1, col2 = st.columns(2)
+        with col1:
+            model_options = ["mistral", "llama2", "phi3:mini", "codellama"]
+            model_name = st.selectbox(
+                "Model:", model_options, index=0, key="global_ollama_model"
+            )
+        with col2:
+            base_url = st.text_input(
+                "Ollama URL:", "http://localhost:11434", key="global_ollama_url"
+            )
+
+        # Test connection và Create explanation
+        col_test, col_explain = st.columns(2)
+
+        with col_test:
+            if st.button("Test kết nối", key="global_test_connection"):
+                with st.spinner("Đang kiểm tra kết nối..."):
+                    try:
+                        import requests
+
+                        response = requests.get(f"{base_url}/api/tags", timeout=5)
+                        if response.status_code == 200:
+                            models = response.json().get("models", [])
+                            model_names = [m["name"] for m in models]
+                            if model_names:
+                                st.success(f"Models: {', '.join(model_names)}")
+                            else:
+                                st.warning("Chưa có model. Chạy: `ollama pull mistral`")
+                        else:
+                            st.error("Server không phản hồi")
+                    except Exception as e:
+                        st.error(f"Lỗi: {str(e)}")
+                        st.info("Chạy: `ollama serve`")
+
+        with col_explain:
+            if st.button(
+                "Tạo giải thích", type="primary", key="global_create_explanation"
+            ):
+                # Kiểm tra có kết quả gợi ý không
+                if (
+                    "current_recs" not in st.session_state
+                    or not st.session_state.current_recs
+                ):
+                    st.error("Vui lòng tạo gợi ý bài tập trước!")
+                else:
+                    try:
+                        # Sử dụng dữ liệu từ session_state
+                        user_id = st.session_state.current_user
+                        recs = st.session_state.current_recs
+                        item_details = st.session_state.current_items
+
+                        # Chuẩn bị dữ liệu
+                        student_code = (
+                            user_id2token[user_id]
+                            if user_id < len(user_id2token)
+                            else f"User_{user_id}"
+                        )
+
+                        rec_data = []
+                        for item_internal_id, item_external_id, score in recs:
+                            item_info = get_item_display_info(
+                                item_external_id, item_details
+                            )
+                            rec_data.append(
+                                {
+                                    "title": item_info["title"],
+                                    "topic": item_info["topic"],
+                                    "difficulty": item_info["difficulty"],
+                                    "score": score,
+                                }
+                            )
+
+                        explainer = OllamaExplainer(model_name, base_url)
+
+                        with st.spinner(f"Đang xử lý với {model_name}..."):
+                            explanation = explainer.explain_recommendations(
+                                student_code, rec_data
+                            )
+
+                        # Lưu explanation vào session_state
+                        st.session_state.explanation = explanation
+                        st.success("Giải thích đã được tạo! Xem bên dưới.")
+
+                    except Exception as e:
+                        st.error(f"Lỗi Ollama: {str(e)}")
+                        st.info("Thử: `ollama serve` và `ollama pull mistral`")
 
 # ===== HIỂN THỊ GIẢI THÍCH TỪ SESSION STATE =====
 if LLM_AVAILABLE and "explanation" in st.session_state and st.session_state.explanation:

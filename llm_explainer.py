@@ -95,16 +95,90 @@ class LLMExplainer:
             return f"Lỗi giải thích: {str(e)}"
 
 
+class MistralCloudExplainer:
+    """
+    Sử dụng Mistral AI từ cloud (mistral.ai)
+    """
+
+    def __init__(self, api_key: str, model_name: str = "mistral-small-latest"):
+        """
+        Initialize Mistral Cloud client
+        
+        Args:
+            api_key: API key từ console.mistral.ai
+            model_name: Tên model (mistral-small-latest, mistral-medium-latest, mistral-large-latest)
+        """
+        try:
+            from mistralai import Mistral
+            self.client = Mistral(api_key=api_key)
+            self.model_name = model_name
+        except ImportError:
+            raise ImportError("Cần cài đặt mistralai: pip install mistralai")
+
+    def explain_recommendations(
+        self, student_code: str, recommendations: List[Dict]
+    ) -> str:
+        """Giải thích sử dụng Mistral AI từ cloud"""
+        context = self._build_context(student_code, recommendations)
+
+        prompt = f"""Bạn là giáo viên lập trình có kinh nghiệm. Hãy phân tích danh sách gợi ý bài tập sau và giải thích tại sao chúng phù hợp:
+
+{context}
+
+Hãy viết một phân tích chi tiết bao gồm:
+
+**1. Phân tích tổng quan:**
+- Chủ đề chính của các bài tập được gợi ý
+- Mức độ khó và sự phân bố
+
+**2. Lý do gợi ý:**
+- Tại sao những bài tập này phù hợp với sinh viên
+- Sự liên kết giữa các chủ đề
+
+**3. Lộ trình học tập:**
+- Thứ tự nên làm bài
+- Kỹ năng sẽ phát triển
+
+Viết bằng tiếng Việt, đầy đủ và dễ hiểu."""
+
+        try:
+            response = self.client.chat.complete(
+                model=self.model_name,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.7,
+                max_tokens=800,
+            )
+            
+            return response.choices[0].message.content
+
+        except Exception as e:
+            return f"Không thể kết nối Mistral AI: {str(e)}"
+
+    def _build_context(self, student_code: str, recommendations: List[Dict]) -> str:
+        context = f"Sinh viên: {student_code}\nBài tập gợi ý:\n"
+        for i, rec in enumerate(recommendations, 1):
+            context += f"{i}. {rec['title']} ({rec['topic']}, {rec['difficulty']})\n"
+        return context
+
+
 class OllamaExplainer:
     """
     Phiên bản sử dụng Ollama (local LLM)
     """
 
     def __init__(
-        self, model_name: str = "llama2", base_url: str = "http://localhost:11434"
+        self, model_name: str = "llama2", base_url: str = None
     ):
+        import os
+        
         self.model_name = model_name
-        self.base_url = base_url
+        # Use provided URL, environment variable, or default to localhost
+        self.base_url = base_url or os.getenv("OLLAMA_URL", "http://localhost:11434")
 
         try:
             import requests
