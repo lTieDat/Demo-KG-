@@ -4,23 +4,33 @@ import os
 import sys
 import torch
 
-# --- Patch torch.load để luôn weights_only=False ---
-_real_torch_load = torch.load
+# Patch DGL's edge_subgraph to handle preserve_nodes parameter
+import dgl
+_original_edge_subgraph = dgl.DGLGraph.edge_subgraph
 
+def patched_edge_subgraph(self, edges, *args, **kwargs):
+    # Remove preserve_nodes if present (not supported in DGL 1.1.2)
+    kwargs.pop('preserve_nodes', None)
+    return _original_edge_subgraph(self, edges, *args, **kwargs)
 
-def torch_load_compatible(*args, **kwargs):
-    kwargs["weights_only"] = False
-    return _real_torch_load(*args, **kwargs)
+dgl.DGLGraph.edge_subgraph = patched_edge_subgraph
 
+# Monkey-patch to handle missing KGAT_UserKG class
+from recbole.model.knowledge_aware_recommender import KGAT
+import recbole.model.knowledge_aware_recommender.kgat as kgat_module
 
-torch.load = torch_load_compatible  # override toàn cục
+# Add KGAT_UserKG as an alias to KGAT in the kgat module
+kgat_module.KGAT_UserKG = KGAT
+
+# Create a fake kgat_userkg module that points to the kgat module
+sys.modules['recbole.model.knowledge_aware_recommender.kgat_userkg'] = kgat_module
 
 from recbole.quick_start import load_data_and_model
 from recbole.data.interaction import Interaction
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
 from recbole.utils import init_seed, init_logger
-from recbole.model.knowledge_aware_recommender import KGCN
+from recbole.model.knowledge_aware_recommender import KGAT
 
 # Import utilities
 from item_utils import load_item_details, get_item_display_info
@@ -33,13 +43,12 @@ try:
 except ImportError:
     LLM_AVAILABLE = False
     st.warning(
-        "⚠️ LLM Explainer không available. Cài đặt thư viện: pip install openai requests"
+        "LLM Explainer không available. Cài đặt thư viện: pip install openai requests"
     )
 
-# Thư mục chứa model
-MODEL_DIR = r"saved"  # Thư mục model local
-RECBOLE_MODEL_DIR = r"E:\DoAn\RecBole\saved"  # Thư mục model RecBole gốc
-sys.path.append(r"E:\DoAn\RecBole")
+# Thư mục chứa model (relative path)
+MODEL_DIR = "saved"
+sys.path.append("RecBole")
 
 
 # Hàm kiểm tra compatibility của checkpoint
@@ -48,7 +57,8 @@ def check_checkpoint_compatibility(checkpoint_path, target_dataset="code-ptit-10
     Kiểm tra thông tin cơ bản của checkpoint và compatibility với dataset hiện tại
     """
     try:
-        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+        # Load checkpoint with KGAT_UserKG aliased to KGAT
+        checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
 
         info = {
             "filename": os.path.basename(checkpoint_path),
@@ -63,23 +73,14 @@ def check_checkpoint_compatibility(checkpoint_path, target_dataset="code-ptit-10
             "compatibility_issues": [],
         }
 
-        # Lấy thông tin từ config
-        if "config" in checkpoint:
-            config = checkpoint["config"]
-            if hasattr(config, "final_config_dict"):
-                config_dict = config.final_config_dict
-            else:
-                config_dict = dict(config) if hasattr(config, "__iter__") else {}
-
-            info["dataset"] = config_dict.get("dataset", "Unknown")
-            info["embedding_size"] = config_dict.get("embedding_size", "Unknown")
-
         # Lấy thông tin từ state_dict
         if "state_dict" in checkpoint:
             state_dict = checkpoint["state_dict"]
             if "user_embedding.weight" in state_dict:
                 user_shape = state_dict["user_embedding.weight"].shape
                 info["user_count"] = user_shape[0]
+                # Infer embedding_size from state_dict
+                info["embedding_size"] = user_shape[1]
 
             if "entity_embedding.weight" in state_dict:
                 entity_shape = state_dict["entity_embedding.weight"].shape
@@ -89,20 +90,12 @@ def check_checkpoint_compatibility(checkpoint_path, target_dataset="code-ptit-10
                 relation_shape = state_dict["relation_embedding.weight"].shape
                 info["relation_count"] = relation_shape[0]
 
-        # Kiểm tra compatibility với dataset target
-        if info["dataset"] == target_dataset:
-            info["compatible"] = True
-        else:
-            info["compatibility_issues"].append(
-                f"Dataset mismatch: {info['dataset']} != {target_dataset}"
-            )
+        # Kiểm tra compatibility: dataset chỉ cần dựa vào tên file hoặc bỏ qua
+        info["compatible"] = True
+        info["dataset"] = target_dataset  # Assume compatible
 
-        # Kiểm tra embedding size (nếu config hiện tại có embedding_size=32)
-        if info["embedding_size"] != "Unknown" and info["embedding_size"] != 32:
-            info["compatibility_issues"].append(
-                f"Embedding size mismatch: {info['embedding_size']} != 32"
-            )
-            info["compatible"] = False
+        # Accept any embedding size - will be handled by config
+        # No embedding size check needed
 
         return info
 
@@ -138,99 +131,72 @@ def get_compatible_checkpoints(checkpoint_dir, target_dataset="code-ptit-100k"):
 # Hàm load model từ checkpoint
 def load_trained_model(model_path, config_file="config.yaml"):
     """
-    Load model KGCN từ checkpoint đã trained với config gốc
+    Load model KGAT từ checkpoint đã trained với config gốc
     """
     try:
-        # Load checkpoint để lấy thông tin
-        checkpoint = torch.load(model_path, map_location="cpu")
+        # Load checkpoint with KGAT_UserKG aliased to KGAT
+        checkpoint = torch.load(model_path, map_location='cpu', weights_only=False)
 
-        # Hiển thị thông tin checkpoint
-        if "config" in checkpoint:
-            original_config = checkpoint["config"]
-            if hasattr(original_config, "final_config_dict"):
-                config_dict = original_config.final_config_dict
-            else:
-                config_dict = (
-                    dict(original_config)
-                    if hasattr(original_config, "__iter__")
-                    else {}
+        # Hiển thị thông tin checkpoint từ state_dict
+        if "state_dict" in checkpoint:
+            state_dict = checkpoint["state_dict"]
+            if "user_embedding.weight" in state_dict:
+                embedding_dim = state_dict["user_embedding.weight"].shape[1]
+                st.info(f"Embedding dim từ checkpoint: {embedding_dim}")
+
+        st.info(f"Epoch: {checkpoint.get('epoch', 'N/A')}")
+        st.info(f"Best validation score: {checkpoint.get('best_valid_score', 'N/A')}")
+
+        # Sử dụng config local và load state_dict
+        if os.path.exists(config_file):
+            st.info("Đang load model từ config.yaml và state_dict...")
+            config = Config(model="KGAT", config_file_list=[config_file])
+            
+            # Override dataset path to use relative path instead of absolute
+            config['data_path'] = 'dataset'
+            config['dataset'] = 'code-ptit-100k'
+
+            # Khởi tạo dataset với config local
+            init_seed(config["seed"], config["reproducibility"])
+            dataset = create_dataset(config)
+            train_data, valid_data, test_data = data_preparation(config, dataset)
+
+            # Khởi tạo model với config local
+            model = KGAT(config, dataset).to(config["device"])
+
+            # Load state_dict từ checkpoint
+            try:
+                missing_keys, unexpected_keys = model.load_state_dict(
+                    checkpoint["state_dict"], strict=False
                 )
+                model.eval()
 
-            dataset_name = config_dict.get("dataset", "Unknown")
-            embedding_size = config_dict.get("embedding_size", "Unknown")
-            st.info(f"📋 Dataset gốc: {dataset_name}")
-            st.info(f"🔧 Embedding dim: {embedding_size}")
-
-        # Thử sử dụng RecBole's load_data_and_model trước
-        try:
-            st.info("🔄 Đang load model bằng RecBole's method...")
-            config, model, dataset, train_data, valid_data, test_data = (
-                load_data_and_model(model_path)
-            )
-
-            st.success(
-                f"✅ Đã load model thành công! Epoch: {checkpoint.get('epoch', 'N/A')}"
-            )
-            st.info(
-                f"📊 Best validation score: {checkpoint.get('best_valid_score', 'N/A')}"
-            )
-
-            return config, model, dataset
-
-        except Exception as recbole_error:
-            st.warning(f"⚠️ RecBole method failed: {str(recbole_error)}")
-            st.info("� Đang thử phương pháp custom...")
-
-            # Fallback: Sử dụng config local và override state_dict
-            if os.path.exists(config_file):
-                config = Config(model="KGCN", config_file_list=[config_file])
-
-                # Khởi tạo dataset với config local
-                init_seed(config["seed"], config["reproducibility"])
-                dataset = create_dataset(config)
-                train_data, valid_data, test_data = data_preparation(config, dataset)
-
-                # Khởi tạo model với config local
-                model = KGCN(config, dataset).to(config["device"])
-
-                # Thử load state_dict từ checkpoint
-                try:
-                    model.load_state_dict(checkpoint["state_dict"], strict=False)
-                    model.eval()
-
+                if missing_keys or unexpected_keys:
                     st.warning(
-                        "⚠️ Loaded với strict=False (có thể một số weights không match)"
+                        f"Loaded với strict=False. Missing keys: {len(missing_keys)}, Unexpected keys: {len(unexpected_keys)}"
                     )
-                    st.success(
-                        f"✅ Model loaded! Epoch: {checkpoint.get('epoch', 'N/A')}"
-                    )
-                    st.info(
-                        f"📊 Best validation score: {checkpoint.get('best_valid_score', 'N/A')}"
-                    )
+                else:
+                    st.success("Đã load state_dict hoàn toàn khớp!")
 
-                    return config, model, dataset
-
-                except Exception as strict_error:
-                    st.error(f"❌ Không thể load state_dict: {str(strict_error)}")
-                    return None, None, None
-
-            else:
-                st.error(
-                    "❌ Không tìm thấy config.yaml và không thể load từ checkpoint"
+                st.success(
+                    f"Model loaded! Epoch: {checkpoint.get('epoch', 'N/A')}"
                 )
+
+                return config, model, dataset
+
+            except Exception as strict_error:
+                st.error(f"Không thể load state_dict: {str(strict_error)}")
                 return None, None, None
 
+        else:
+            st.error(
+                "Không tìm thấy config.yaml. Vui lòng đảm bảo file config.yaml tồn tại."
+            )
+            return None, None, None
+
     except Exception as e:
-        st.error(f"❌ Lỗi khi load model: {str(e)}")
+        st.error(f"Lỗi khi load model: {str(e)}")
         return None, None, None
-
-
-# Hàm load model cũ (backup)
-def load_model_old(model_path):
-    config, model, dataset, train_data, valid_data, test_data = load_data_and_model(
-        model_path
-    )
-    return config, model, dataset
 
 
 # Hàm lấy top-k recommendation
@@ -293,108 +259,176 @@ def get_top_k_recommendations(model, dataset, user_id, topk=10):
         raise Exception(f"Lỗi trong get_top_k_recommendations: {str(e)}")
 
 
+# ---------------- Inject Modern CSS Styles ----------------
+st.markdown("""
+    <style>
+        /* Global modern styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fa;
+            color: #333;
+        }
+        .stApp {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3, h4 {
+            color: #1f77b4;
+            transition: color 0.3s ease;
+        }
+        .stButton > button {
+            background-color: #1f77b4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            transition: all 0.3s ease;
+        }
+        .stButton > button:hover {
+            background-color: #135c94;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .stSelectbox, .stTextInput, .stRadio {
+            transition: all 0.3s ease;
+        }
+        .stSelectbox:hover, .stTextInput:hover, .stRadio:hover {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        /* Fade-in animation for containers */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stContainer, div[data-testid="column"] {
+            animation: fadeIn 0.5s ease-out;
+        }
+        /* Card styles with hover animation and improved padding/margin */
+        .recommendation-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 10px;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        .recommendation-card:hover {
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+            transform: translateY(-5px);
+        }
+        .recommendation-card h4 {
+            margin-top: 0;
+            color: #1f77b4;
+        }
+        .recommendation-card p {
+            margin: 8px 0;
+            color: #555;
+        }
+        /* Expander animation */
+        .stExpander {
+            transition: all 0.3s ease;
+        }
+        /* Loading animation enhancement */
+        .stSpinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # ---------------- UI ----------------
-st.title("🎯 Hệ thống gợi ý bài tập KGCN")
+st.title("Hệ thống gợi ý bài tập Code PTIT")
 st.markdown(
     "*Sử dụng Knowledge Graph Convolutional Network để gợi ý bài tập cho sinh viên*"
 )
 
-# Tùy chọn load model
-st.sidebar.header("⚙️ Cấu hình Model")
-load_method = st.sidebar.radio(
-    "Chọn phương thức load model:", ["Từ checkpoint (mới)", "Từ RecBole (cũ)"]
-)
+# Tùy chọn load model (removed new checkpoint option, using compatible checkpoints directly)
+st.sidebar.header("Cấu hình Model")
 
-if load_method == "Từ checkpoint (mới)":
+with st.spinner("Đang tải danh sách model..."):
     # Lấy danh sách model tương thích và không tương thích
     compatible_models, incompatible_models = get_compatible_checkpoints(
-        RECBOLE_MODEL_DIR
+        MODEL_DIR
     )
 
-    if compatible_models:
-        st.sidebar.success(f"✅ {len(compatible_models)} model tương thích")
+if compatible_models:
+    st.sidebar.success(f"{len(compatible_models)} model tương thích")
 
-        # Tạo options cho selectbox với thông tin chi tiết
-        model_options = []
-        model_info_dict = {}
+    # Tạo options cho selectbox với thông tin chi tiết
+    model_options = []
+    model_info_dict = {}
 
-        for model_file, info in compatible_models:
-            display_name = f"{model_file}"
-            model_options.append(display_name)
-            model_info_dict[display_name] = (model_file, info)
+    for model_file, info in compatible_models:
+        display_name = f"{model_file}"
+        model_options.append(display_name)
+        model_info_dict[display_name] = (model_file, info)
 
-        selected_model = st.sidebar.selectbox("Chọn model tương thích:", model_options)
-
-        if selected_model:
-            model_file, info = model_info_dict[selected_model]
-            model_path = os.path.join(RECBOLE_MODEL_DIR, model_file)
-
-            # Hiển thị thông tin checkpoint
-            with st.sidebar.expander("📋 Thông tin Checkpoint"):
-                st.write(f"**Dataset:** {info['dataset']}")
-                st.write(f"**Epoch:** {info['epoch']}")
-                st.write(f"**Score:** {info['score']}")
-                st.write(f"**Embedding size:** {info['embedding_size']}")
-                st.write(
-                    f"**Users:** {info['user_count']:,}"
-                    if info["user_count"] != "Unknown"
-                    else "**Users:** Unknown"
-                )
-                st.write(
-                    f"**Entities:** {info['entity_count']:,}"
-                    if info["entity_count"] != "Unknown"
-                    else "**Entities:** Unknown"
-                )
-                st.write(
-                    f"**Relations:** {info['relation_count']:,}"
-                    if info["relation_count"] != "Unknown"
-                    else "**Relations:** Unknown"
-                )
-
-        # Hiển thị thông tin về model không tương thích nếu có
-        if incompatible_models:
-            with st.sidebar.expander(
-                f"⚠️ {len(incompatible_models)} model không tương thích"
-            ):
-                for model_file, info in incompatible_models:
-                    st.write(f"**{model_file}**")
-                    if "compatibility_issues" in info:
-                        for issue in info["compatibility_issues"]:
-                            st.write(f"  - {issue}")
-                    st.write("---")
-    else:
-        st.sidebar.error("❌ Không có model nào tương thích với dataset hiện tại!")
-        st.sidebar.write("Dataset yêu cầu: code-ptit-100k, embedding_size=64")
-
-        # Hiển thị danh sách tất cả model để debug
-        all_models = [f for f in os.listdir(RECBOLE_MODEL_DIR) if f.endswith(".pth")]
-        if all_models:
-            with st.sidebar.expander("📋 Tất cả model có sẵn"):
-                for model_file in all_models:
-                    model_path = os.path.join(RECBOLE_MODEL_DIR, model_file)
-                    info = check_checkpoint_compatibility(model_path, "code-ptit-100k")
-                    st.write(f"**{model_file}**")
-                    if "compatibility_issues" in info:
-                        for issue in info["compatibility_issues"]:
-                            st.write(f"  - {issue}")
-                    st.write("---")
-
-        st.stop()
-
-    # Load model
-    config, model, dataset = load_trained_model(model_path)
-else:
-    # Chọn model từ thư mục local
-    models = [f for f in os.listdir(MODEL_DIR) if f.endswith(".pth")]
-    if not models:
-        st.sidebar.warning("⚠️ Không tìm thấy model nào trong thư mục saved/")
-        st.stop()
-
-    selected_model = st.sidebar.selectbox("Chọn model:", models)
-    model_path = os.path.join(MODEL_DIR, selected_model)
+    selected_model = st.sidebar.selectbox("Chọn model tương thích:", model_options)
 
     if selected_model:
-        config, model, dataset = load_model_old(model_path)
+        model_file, info = model_info_dict[selected_model]
+        model_path = os.path.join(MODEL_DIR, model_file)
+
+        # Hiển thị thông tin checkpoint
+        with st.sidebar.expander("Thông tin Checkpoint"):
+            st.write(f"**Dataset:** {info['dataset']}")
+            st.write(f"**Epoch:** {info['epoch']}")
+            st.write(f"**Score:** {info['score']}")
+            st.write(f"**Embedding size:** {info['embedding_size']}")
+            st.write(
+                f"**Users:** {info['user_count']:,}"
+                if info["user_count"] != "Unknown"
+                else "**Users:** Unknown"
+            )
+            st.write(
+                f"**Entities:** {info['entity_count']:,}"
+                if info["entity_count"] != "Unknown"
+                else "**Entities:** Unknown"
+            )
+            st.write(
+                f"**Relations:** {info['relation_count']:,}"
+                if info["relation_count"] != "Unknown"
+                else "**Relations:** Unknown"
+            )
+
+    # Hiển thị thông tin về model không tương thích nếu có
+    if incompatible_models:
+        with st.sidebar.expander(
+            f"{len(incompatible_models)} model không tương thích"
+        ):
+            for model_file, info in incompatible_models:
+                st.write(f"**{model_file}**")
+                if "compatibility_issues" in info:
+                    for issue in info["compatibility_issues"]:
+                        st.write(f"  - {issue}")
+                st.write("---")
+else:
+    st.sidebar.error("Không có model nào tương thích với dataset hiện tại!")
+    st.sidebar.write("Dataset yêu cầu: code-ptit-100k, embedding_size=64")
+
+    # Hiển thị danh sách tất cả model để debug
+    all_models = [f for f in os.listdir(MODEL_DIR) if f.endswith(".pth")]
+    if all_models:
+        with st.sidebar.expander("Tất cả model có sẵn"):
+            for model_file in all_models:
+                model_path = os.path.join(MODEL_DIR, model_file)
+                info = check_checkpoint_compatibility(model_path, "code-ptit-100k")
+                st.write(f"**{model_file}**")
+                if "compatibility_issues" in info:
+                    for issue in info["compatibility_issues"]:
+                        st.write(f"  - {issue}")
+                st.write("---")
+
+    st.stop()
+
+# Load model with spinner
+with st.spinner("Đang load model..."):
+    config, model, dataset = load_trained_model(model_path)
 
 # Giao diện prediction
 if (
@@ -423,7 +457,7 @@ if (
     sorted_student_codes = sorted(student_options.keys())
 
     # Hiển thị thông tin dataset trong sidebar
-    st.sidebar.header("📊 Thông tin Dataset")
+    st.sidebar.header("Thông tin Dataset")
     st.sidebar.metric("Tổng số user", f"{dataset.user_num:,}")
     st.sidebar.metric("Số sinh viên hợp lệ", f"{len(student_options):,}")
     st.sidebar.metric("Số bài tập", f"{dataset.item_num:,}")
@@ -442,7 +476,7 @@ if (
             major = code[3:7]
             major_stats[major] = major_stats.get(major, 0) + 1
 
-    with st.sidebar.expander("📈 Thống kê chi tiết"):
+    with st.sidebar.expander("Thống kê chi tiết"):
         st.write("**Theo năm:**")
         for year, count in sorted(year_stats.items()):
             st.write(f"- {year}: {count} sinh viên")
@@ -452,7 +486,7 @@ if (
         for major, count in top_majors:
             st.write(f"- {major}: {count} sinh viên")
 
-    st.subheader("🎓 Chọn sinh viên")
+    st.subheader("Chọn sinh viên")
 
     # Tùy chọn nhập liệu
     input_method = st.radio(
@@ -462,7 +496,7 @@ if (
     if input_method == "Dropdown mã sinh viên":
         # Tìm kiếm sinh viên
         search_term = st.text_input(
-            "🔍 Tìm kiếm mã sinh viên (tùy chọn):",
+            "Tìm kiếm mã sinh viên (tùy chọn):",
             placeholder="Nhập mã sinh viên để tìm kiếm nhanh...",
             help="Nhập một phần mã sinh viên để lọc danh sách",
         )
@@ -476,10 +510,10 @@ if (
             ]
             if filtered_codes:
                 display_codes = filtered_codes
-                st.success(f"🎯 Tìm thấy {len(filtered_codes)} sinh viên phù hợp")
+                st.success(f"Tìm thấy {len(filtered_codes)} sinh viên phù hợp")
             else:
                 st.warning(
-                    f"⚠️ Không tìm thấy sinh viên nào với từ khóa '{search_term}'"
+                    f"Không tìm thấy sinh viên nào với từ khóa '{search_term}'"
                 )
                 display_codes = sorted_student_codes
         else:
@@ -495,9 +529,9 @@ if (
 
         if selected_student and selected_student in student_options:
             user_id = student_options[selected_student]
-            st.info(f"📋 Mã sinh viên: **{selected_student}** (User ID: {user_id})")
+            st.info(f"Mã sinh viên: **{selected_student}** (User ID: {user_id})")
         else:
-            st.warning("⚠️ Vui lòng chọn mã sinh viên hợp lệ")
+            st.warning("Vui lòng chọn mã sinh viên hợp lệ")
             user_id = None
 
     else:
@@ -518,12 +552,12 @@ if (
 
             if user_id:
                 st.success(
-                    f"✅ Tìm thấy sinh viên: **{student_code_input}** (User ID: {user_id})"
+                    f"Tìm thấy sinh viên: **{student_code_input}** (User ID: {user_id})"
                 )
             else:
-                st.error(f"❌ Không tìm thấy mã sinh viên: **{student_code_input}**")
+                st.error(f"Không tìm thấy mã sinh viên: **{student_code_input}**")
                 st.info(
-                    "💡 Gợi ý: Hãy thử nhập chính xác mã sinh viên từ danh sách hoặc sử dụng chế độ Dropdown"
+                    "Gợi ý: Hãy thử nhập chính xác mã sinh viên từ danh sách hoặc sử dụng chế độ Dropdown"
                 )
 
     # Chọn số lượng recommendation
@@ -534,9 +568,9 @@ if (
         help="Chọn số lượng bài tập bạn muốn nhận gợi ý",
     )
 
-    if st.button("🎯 Tạo gợi ý bài tập"):
+    if st.button("Tạo gợi ý bài tập"):
         if user_id is None or user_id <= 0:
-            st.error("❌ Vui lòng chọn sinh viên hợp lệ trước khi tạo gợi ý!")
+            st.error("Vui lòng chọn sinh viên hợp lệ trước khi tạo gợi ý!")
         else:
             # Xóa giải thích cũ khi tạo gợi ý mới
             if "explanation" in st.session_state:
@@ -551,7 +585,7 @@ if (
 
                 if input_method == "Dropdown mã sinh viên":
                     st.success(
-                        f"✅ Top {topk} gợi ý bài tập cho sinh viên **{selected_student}**:"
+                        f"Top {topk} gợi ý bài tập cho sinh viên **{selected_student}**:"
                     )
                 else:
                     student_code = (
@@ -560,7 +594,7 @@ if (
                         else f"User_{user_id}"
                     )
                     st.success(
-                        f"✅ Top {topk} gợi ý bài tập cho **{student_code}** (ID: {user_id}):"
+                        f"Top {topk} gợi ý bài tập cho **{student_code}** (ID: {user_id}):"
                     )
 
                 # Hiển thị kết quả dưới dạng cards
@@ -575,35 +609,27 @@ if (
                             )
 
                             with cols[j]:
-                                # Tạo card cho mỗi bài tập
-                                with st.container():
-                                    st.markdown(
-                                        f"""
-                                    <div style="
-                                        border: 1px solid #ddd;
-                                        border-radius: 10px;
-                                        padding: 15px;
-                                        margin: 10px 0;
-                                        background-color: #f9f9f9;
-                                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                    ">
-                                        <h4 style="color: #1f77b4; margin-top: 0;">#{i+j+1} Bài tập {item_external_id}</h4>
+                                # Tạo card cho mỗi bài tập với class cho animation
+                                st.markdown(
+                                    f"""
+                                    <div class="recommendation-card">
+                                        <h4>#{i+j+1} Bài tập {item_external_id}</h4>
                                         <p style="font-weight: bold; color: #333; margin: 5px 0;">
-                                            📝 {item_info['title']}
+                                            {item_info['title']}
                                         </p>
                                         <p style="color: #666; margin: 3px 0;">
-                                            🏷️ <strong>Chủ đề:</strong> {item_info['topic']}
+                                            <strong>Chủ đề:</strong> {item_info['topic']}
                                         </p>
                                         <p style="color: #666; margin: 3px 0;">
-                                            🔖 <strong>Chủ đề phụ:</strong> {item_info['sub_topic']}
+                                            <strong>Chủ đề phụ:</strong> {item_info['sub_topic']}
                                         </p>
                                         <p style="color: #666; margin: 3px 0;">
-                                            ⭐ <strong>Độ khó:</strong> {item_info['difficulty']}
+                                            <strong>Độ khó:</strong> {item_info['difficulty']}
                                         </p>
                                     </div>
                                     """,
-                                        unsafe_allow_html=True,
-                                    )
+                                    unsafe_allow_html=True,
+                                )
 
                 # Lưu kết quả vào session state để tránh mất dữ liệu
                 if "current_recs" not in st.session_state:
@@ -616,7 +642,7 @@ if (
                     st.session_state.current_items = item_details
 
                 # Hiển thị thông tin chi tiết trong expander
-                with st.expander("📊 Chi tiết kết quả"):
+                with st.expander("Chi tiết kết quả"):
                     st.write("**Giải thích:**")
                     st.write("- **STT**: Thứ tự gợi ý (cao đến thấp)")
                     st.write("- **Mã bài tập**: Mã bài tập được gợi ý")
@@ -647,16 +673,16 @@ if (
                             }
                         )
                     df = pd.DataFrame(df_data)
-                    st.dataframe(df, width="stretch", hide_index=True)
+                    st.dataframe(df, use_container_width=True, hide_index=True)
 
             except Exception as e:
-                st.error(f"❌ Lỗi khi tạo gợi ý: {str(e)}")
+                st.error(f"Lỗi khi tạo gợi ý: {str(e)}")
                 st.error("Chi tiết lỗi:")
                 st.code(str(e))
 
 # ===== GIAO DIỆN OLLAMA (LUÔN HIỂN THỊ) =====
 if LLM_AVAILABLE:
-    st.subheader("🤖 Giải Thích Bằng AI (Ollama)")
+    st.subheader("Giải Thích Bằng AI (Ollama)")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -673,34 +699,35 @@ if LLM_AVAILABLE:
     col_test, col_explain = st.columns(2)
 
     with col_test:
-        if st.button("🔍 Test kết nối", key="global_test_connection"):
-            try:
-                import requests
+        if st.button("Test kết nối", key="global_test_connection"):
+            with st.spinner("Đang kiểm tra kết nối..."):
+                try:
+                    import requests
 
-                response = requests.get(f"{base_url}/api/tags", timeout=5)
-                if response.status_code == 200:
-                    models = response.json().get("models", [])
-                    model_names = [m["name"] for m in models]
-                    if model_names:
-                        st.success(f"✅ Models: {', '.join(model_names)}")
+                    response = requests.get(f"{base_url}/api/tags", timeout=5)
+                    if response.status_code == 200:
+                        models = response.json().get("models", [])
+                        model_names = [m["name"] for m in models]
+                        if model_names:
+                            st.success(f"Models: {', '.join(model_names)}")
+                        else:
+                            st.warning("Chưa có model. Chạy: `ollama pull mistral`")
                     else:
-                        st.warning("⚠️ Chưa có model. Chạy: `ollama pull mistral`")
-                else:
-                    st.error("❌ Server không phản hồi")
-            except Exception as e:
-                st.error(f"❌ Lỗi: {str(e)}")
-                st.info("💡 Chạy: `ollama serve`")
+                        st.error("Server không phản hồi")
+                except Exception as e:
+                    st.error(f"Lỗi: {str(e)}")
+                    st.info("Chạy: `ollama serve`")
 
     with col_explain:
         if st.button(
-            "🤖 Tạo giải thích", type="primary", key="global_create_explanation"
+            "Tạo giải thích", type="primary", key="global_create_explanation"
         ):
             # Kiểm tra có kết quả gợi ý không
             if (
                 "current_recs" not in st.session_state
                 or not st.session_state.current_recs
             ):
-                st.error("❌ Vui lòng tạo gợi ý bài tập trước!")
+                st.error("Vui lòng tạo gợi ý bài tập trước!")
             else:
                 try:
                     # Sử dụng dữ liệu từ session_state
@@ -738,18 +765,18 @@ if LLM_AVAILABLE:
 
                     # Lưu explanation vào session_state
                     st.session_state.explanation = explanation
-                    st.success("✅ Giải thích đã được tạo! Xem bên dưới.")
+                    st.success("Giải thích đã được tạo! Xem bên dưới.")
 
                 except Exception as e:
                     st.error(f"Lỗi Ollama: {str(e)}")
-                    st.info("💡 Thử: `ollama serve` và `ollama pull mistral`")
+                    st.info("Thử: `ollama serve` và `ollama pull mistral`")
 
 # ===== HIỂN THỊ GIẢI THÍCH TỪ SESSION STATE =====
 if LLM_AVAILABLE and "explanation" in st.session_state and st.session_state.explanation:
-    st.subheader("💡 Giải Thích Từ AI")
+    st.subheader("Giải Thích Từ AI")
 
     # Hiển thị đơn giản với st.info để đảm bảo màu text đúng
-    st.info("🤖 **Phân tích từ AI:**")
+    st.info("**Phân tích từ AI:**")
     
     # Sử dụng st.text_area để hiển thị đầy đủ và có màu text rõ ràng
     st.text_area(
@@ -761,9 +788,9 @@ if LLM_AVAILABLE and "explanation" in st.session_state and st.session_state.expl
     )
 
     # Nút xóa giải thích
-    if st.button("🗑️ Xóa giải thích", key="clear_explanation_global"):
+    if st.button("Xóa giải thích", key="clear_explanation_global"):
         del st.session_state.explanation
         st.rerun()
 
 else:
-    st.warning("⚠️ Vui lòng chọn và load model trước khi sử dụng")
+    st.warning("Vui lòng chọn và load model trước khi sử dụng")

@@ -16,12 +16,6 @@ venv\Scripts\activate
 3. Cài đặt dependencies:
 
 ```bash
-
-```
-
-3. Cài đặt dependencies:
-
-```bash
 pip install -r requirements.txt
 pip install git+https://github.com/RUCAIBox/RecBole-KG.git
 ```
