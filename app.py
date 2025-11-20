@@ -1,4 +1,4 @@
-# app.py - Refactored with Clean Architecture
+# app_refactored.py - Refactored with Clean Architecture
 import streamlit as st
 import os
 import sys
@@ -29,20 +29,15 @@ kgcn_module.KGCN_UserKG = KGCN
 # Create a fake kgcn_userkg module that points to the kgcn module
 sys.modules['recbole.model.knowledge_aware_recommender.kgcn_userkg'] = kgcn_module
 
-from recbole.quick_start import load_data_and_model
-from recbole.data.interaction import Interaction
-from recbole.config import Config
-from recbole.data import create_dataset, data_preparation
-from recbole.utils import init_seed, init_logger
-from recbole.model.knowledge_aware_recommender import KGCN
-
 # Import utilities
 from item_utils import load_item_details, get_item_display_info
+from styles import inject_custom_css
+from utils.models import get_compatible_checkpoints, load_trained_model
+from utils.recommendations import get_top_k_recommendations
 
 # LLM Explainer
 try:
     from llm_explainer import LLMExplainer, OllamaExplainer, LocalLLMExplainer, MistralCloudExplainer
-
     LLM_AVAILABLE = True
 except ImportError:
     LLM_AVAILABLE = False
@@ -50,326 +45,35 @@ except ImportError:
         "LLM Explainer không available. Cài đặt thư viện: pip install openai requests mistralai"
     )
 
-# Thư mục chứa model (relative path)
+# Constants
 MODEL_DIR = "saved"
-sys.path.append("RecBole")
 
+# ============================================================================
+# MAIN APP
+# ============================================================================
 
-# Hàm kiểm tra compatibility của checkpoint
-def check_checkpoint_compatibility(checkpoint_path, target_dataset="code-ptit-100k"):
-    """
-    Kiểm tra thông tin cơ bản của checkpoint và compatibility với dataset hiện tại
-    """
-    try:
-        # Load checkpoint with KGAT_UserKG aliased to KGAT
-        checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
+# Inject custom CSS
+inject_custom_css()
 
-        info = {
-            "filename": os.path.basename(checkpoint_path),
-            "epoch": checkpoint.get("epoch", "N/A"),
-            "score": checkpoint.get("best_valid_score", "N/A"),
-            "dataset": "Unknown",
-            "embedding_size": "Unknown",
-            "user_count": "Unknown",
-            "entity_count": "Unknown",
-            "relation_count": "Unknown",
-            "compatible": False,
-            "compatibility_issues": [],
-        }
-
-        # Lấy thông tin từ state_dict
-        if "state_dict" in checkpoint:
-            state_dict = checkpoint["state_dict"]
-            if "user_embedding.weight" in state_dict:
-                user_shape = state_dict["user_embedding.weight"].shape
-                info["user_count"] = user_shape[0]
-                # Infer embedding_size from state_dict
-                info["embedding_size"] = user_shape[1]
-
-            if "entity_embedding.weight" in state_dict:
-                entity_shape = state_dict["entity_embedding.weight"].shape
-                info["entity_count"] = entity_shape[0]
-
-            if "relation_embedding.weight" in state_dict:
-                relation_shape = state_dict["relation_embedding.weight"].shape
-                info["relation_count"] = relation_shape[0]
-
-        # Kiểm tra compatibility: dataset chỉ cần dựa vào tên file hoặc bỏ qua
-        info["compatible"] = True
-        info["dataset"] = target_dataset  # Assume compatible
-
-        # Accept any embedding size - will be handled by config
-        # No embedding size check needed
-
-        return info
-
-    except Exception as e:
-        return {
-            "filename": os.path.basename(checkpoint_path),
-            "error": str(e),
-            "compatible": False,
-            "compatibility_issues": [f"Error loading: {str(e)}"],
-        }
-
-
-def get_compatible_checkpoints(checkpoint_dir, target_dataset="code-ptit-100k"):
-    """
-    Lấy danh sách các checkpoint tương thích với dataset hiện tại
-    """
-    all_models = [f for f in os.listdir(checkpoint_dir) if f.endswith(".pth")]
-    compatible_models = []
-    incompatible_models = []
-
-    for model_file in all_models:
-        model_path = os.path.join(checkpoint_dir, model_file)
-        info = check_checkpoint_compatibility(model_path, target_dataset)
-
-        if info["compatible"]:
-            compatible_models.append((model_file, info))
-        else:
-            incompatible_models.append((model_file, info))
-
-    return compatible_models, incompatible_models
-
-
-# Hàm load model từ checkpoint
-def load_trained_model(model_path, config_file="config.yaml"):
-    """
-    Load model KGAT từ checkpoint đã trained với config gốc
-    """
-    try:
-        # Load checkpoint with KGAT_UserKG aliased to KGAT
-        checkpoint = torch.load(model_path, map_location='cpu', weights_only=False)
-
-        # Hiển thị thông tin checkpoint từ state_dict
-        if "state_dict" in checkpoint:
-            state_dict = checkpoint["state_dict"]
-            if "user_embedding.weight" in state_dict:
-                embedding_dim = state_dict["user_embedding.weight"].shape[1]
-                st.info(f"Embedding dim từ checkpoint: {embedding_dim}")
-
-        st.info(f"Epoch: {checkpoint.get('epoch', 'N/A')}")
-        st.info(f"Best validation score: {checkpoint.get('best_valid_score', 'N/A')}")
-
-        # Sử dụng config local và load state_dict
-        if os.path.exists(config_file):
-            st.info("Đang load model từ config.yaml và state_dict...")
-            config = Config(model="KGCN", config_file_list=[config_file])
-            
-            # Override dataset path to use relative path instead of absolute
-            config['data_path'] = 'dataset'
-            config['dataset'] = 'code-ptit-100k'
-
-            # Khởi tạo dataset với config local
-            init_seed(config["seed"], config["reproducibility"])
-            dataset = create_dataset(config)
-            train_data, valid_data, test_data = data_preparation(config, dataset)
-
-            # Khởi tạo model với config local
-            model = KGCN(config, dataset).to(config["device"])
-
-            # Load state_dict từ checkpoint
-            try:
-                missing_keys, unexpected_keys = model.load_state_dict(
-                    checkpoint["state_dict"], strict=False
-                )
-                model.eval()
-
-                if missing_keys or unexpected_keys:
-                    st.warning(
-                        f"Loaded với strict=False. Missing keys: {len(missing_keys)}, Unexpected keys: {len(unexpected_keys)}"
-                    )
-                else:
-                    st.success("Đã load state_dict hoàn toàn khớp!")
-
-                st.success(
-                    f"Model loaded! Epoch: {checkpoint.get('epoch', 'N/A')}"
-                )
-
-                return config, model, dataset
-
-            except Exception as strict_error:
-                st.error(f"Không thể load state_dict: {str(strict_error)}")
-                return None, None, None
-
-        else:
-            st.error(
-                "Không tìm thấy config.yaml. Vui lòng đảm bảo file config.yaml tồn tại."
-            )
-            return None, None, None
-
-    except Exception as e:
-        st.error(f"Lỗi khi load model: {str(e)}")
-        return None, None, None
-
-
-# Hàm lấy top-k recommendation
-def get_top_k_recommendations(model, dataset, user_id, topk=10):
-    """
-    Lấy top-k recommendation cho user
-    """
-    try:
-        model.eval()
-        uid_field = dataset.uid_field
-        iid_field = dataset.iid_field
-
-        # Kiểm tra user_id hợp lệ
-        if user_id >= dataset.user_num or user_id < 0:
-            raise ValueError(
-                f"User ID {user_id} không hợp lệ. Phải trong khoảng 0-{dataset.user_num-1}"
-            )
-
-        # Tạo input cho user
-        user_inter = Interaction({uid_field: torch.tensor([user_id])})
-
-        with torch.no_grad():
-            scores = model.full_sort_predict(
-                user_inter.to(model.device)
-            )  # [1, num_items]
-            scores = scores.view(-1)
-
-            # Lấy top-k items
-            topk_scores, topk_iids = torch.topk(scores, min(topk, len(scores)))
-
-            # Convert về tên item nếu có mapping
-            item_id2token = dataset.field2id_token[iid_field]
-
-            results = []
-            for i, iid in enumerate(topk_iids):
-                item_internal_id = int(iid.item())
-
-                # Xử lý item_id2token có thể là dict hoặc array
-                if hasattr(item_id2token, "get"):
-                    # Nếu là dictionary
-                    item_external_id = item_id2token.get(
-                        item_internal_id, f"Item_{item_internal_id}"
-                    )
-                elif hasattr(item_id2token, "__getitem__"):
-                    # Nếu là array/list
-                    try:
-                        item_external_id = item_id2token[item_internal_id]
-                    except (IndexError, KeyError):
-                        item_external_id = f"Item_{item_internal_id}"
-                else:
-                    # Fallback
-                    item_external_id = f"Item_{item_internal_id}"
-
-                score = float(topk_scores[i].item())
-                results.append((item_internal_id, item_external_id, score))
-
-            return results
-
-    except Exception as e:
-        raise Exception(f"Lỗi trong get_top_k_recommendations: {str(e)}")
-
-
-# ---------------- Inject Modern CSS Styles ----------------
-st.markdown("""
-    <style>
-        /* Global modern styles */
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7fa;
-            color: #333;
-        }
-        .stApp {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        h1, h2, h3, h4 {
-            color: #1f77b4;
-            transition: color 0.3s ease;
-        }
-        .stButton > button {
-            background-color: #1f77b4;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 20px;
-            transition: all 0.3s ease;
-        }
-        .stButton > button:hover {
-            background-color: #135c94;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .stSelectbox, .stTextInput, .stRadio {
-            transition: all 0.3s ease;
-        }
-        .stSelectbox:hover, .stTextInput:hover, .stRadio:hover {
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        /* Fade-in animation for containers */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .stContainer, div[data-testid="column"] {
-            animation: fadeIn 0.5s ease-out;
-        }
-        /* Card styles with hover animation and consistent padding */
-        .recommendation-card {
-            border: 1px solid #e0e0e0;
-            border-radius: 12px;
-            padding: 25px 30px;
-            margin: 20px 15px;
-            background-color: white;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
-        }
-        .recommendation-card:hover {
-            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-            transform: translateY(-5px);
-            padding: 25px 30px; /* Keep padding consistent on hover */
-        }
-        .recommendation-card h4 {
-            margin: 0 0 12px 0;
-            color: #1f77b4;
-        }
-        .recommendation-card p {
-            margin: 8px 0;
-            color: #555;
-            line-height: 1.4;
-        }
-        /* Expander animation */
-        .stExpander {
-            transition: all 0.3s ease;
-        }
-        /* Loading animation - apply only to spinner icon */
-        .stSpinner > div > div {
-            animation: spin 1s linear infinite !important;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        /* Prevent text from spinning */
-        .stSpinner > span {
-            animation: none !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-# ---------------- UI ----------------
+# Title
 st.title("Hệ thống gợi ý bài tập Code PTIT")
 st.markdown(
     "*Sử dụng Knowledge Graph Convolutional Network để gợi ý bài tập cho sinh viên*"
 )
 
-# Tùy chọn load model (removed new checkpoint option, using compatible checkpoints directly)
+# ============================================================================
+# SIDEBAR: Model Selection
+# ============================================================================
+
 st.sidebar.header("Cấu hình Model")
 
 with st.spinner("Đang tải danh sách model..."):
-    # Lấy danh sách model tương thích và không tương thích
-    compatible_models, incompatible_models = get_compatible_checkpoints(
-        MODEL_DIR
-    )
+    compatible_models, incompatible_models = get_compatible_checkpoints(MODEL_DIR)
 
 if compatible_models:
     st.sidebar.success(f"{len(compatible_models)} model tương thích")
 
-    # Tạo options cho selectbox với thông tin chi tiết
+    # Tạo options cho selectbox
     model_options = []
     model_info_dict = {}
 
@@ -406,7 +110,7 @@ if compatible_models:
                 else "**Relations:** Unknown"
             )
 
-    # Hiển thị thông tin về model không tương thích nếu có
+    # Hiển thị model không tương thích
     if incompatible_models:
         with st.sidebar.expander(
             f"{len(incompatible_models)} model không tương thích"
@@ -427,20 +131,27 @@ else:
         with st.sidebar.expander("Tất cả model có sẵn"):
             for model_file in all_models:
                 model_path = os.path.join(MODEL_DIR, model_file)
+                from utils.models import check_checkpoint_compatibility
                 info = check_checkpoint_compatibility(model_path, "code-ptit-100k")
                 st.write(f"**{model_file}**")
                 if "compatibility_issues" in info:
                     for issue in info["compatibility_issues"]:
-                        st.write(f"  - {issue}")
+                        st.write(f"  - {issue}**")
                 st.write("---")
 
     st.stop()
 
-# Load model with spinner
+# ============================================================================
+# Load Model
+# ============================================================================
+
 with st.spinner("Đang load model..."):
     config, model, dataset = load_trained_model(model_path)
 
-# Giao diện prediction
+# ============================================================================
+# MAIN INTERFACE: Student Selection & Recommendations
+# ============================================================================
+
 if (
     "config" in locals()
     and config is not None
@@ -451,11 +162,10 @@ if (
     uid_field = dataset.uid_field
     user_id2token = dataset.field2id_token[uid_field]
 
-    # Tạo dictionary mapping từ mã sinh viên sang user_id (bỏ qua [PAD] và lọc mã sinh viên hợp lệ)
+    # Tạo dictionary mapping
     student_options = {}
-    for user_id in range(1, len(user_id2token)):  # Bỏ qua user_id=0 ([PAD])
+    for user_id in range(1, len(user_id2token)):
         student_code = user_id2token[user_id]
-        # Chỉ lấy các mã sinh viên có định dạng hợp lệ (bắt đầu bằng B và có ít nhất 8 ký tự)
         if (
             isinstance(student_code, str)
             and student_code.startswith("B")
@@ -463,25 +173,21 @@ if (
         ):
             student_options[student_code] = user_id
 
-    # Sắp xếp theo mã sinh viên
     sorted_student_codes = sorted(student_options.keys())
 
-    # Hiển thị thông tin dataset trong sidebar
+    # Dataset info in sidebar
     st.sidebar.header("Thông tin Dataset")
     st.sidebar.metric("Tổng số user", f"{dataset.user_num:,}")
     st.sidebar.metric("Số sinh viên hợp lệ", f"{len(student_options):,}")
     st.sidebar.metric("Số bài tập", f"{dataset.item_num:,}")
 
-    # Phân tích thống kê mã sinh viên
+    # Thống kê
     year_stats = {}
     major_stats = {}
     for code in sorted_student_codes:
-        # Năm (B23, B24, etc.)
         if len(code) >= 3:
             year = code[:3]
             year_stats[year] = year_stats.get(year, 0) + 1
-
-        # Ngành (DCCN, DCPT, etc.)
         if len(code) >= 7:
             major = code[3:7]
             major_stats[major] = major_stats.get(major, 0) + 1
@@ -496,22 +202,23 @@ if (
         for major, count in top_majors:
             st.write(f"- {major}: {count} sinh viên")
 
+    # ========================================================================
+    # Student Selection
+    # ========================================================================
+    
     st.subheader("Chọn sinh viên")
 
-    # Tùy chọn nhập liệu
     input_method = st.radio(
         "Phương thức chọn sinh viên:", ["Dropdown mã sinh viên", "Nhập User ID"]
     )
 
     if input_method == "Dropdown mã sinh viên":
-        # Tìm kiếm sinh viên
         search_term = st.text_input(
             "Tìm kiếm mã sinh viên (tùy chọn):",
             placeholder="Nhập mã sinh viên để tìm kiếm nhanh...",
             help="Nhập một phần mã sinh viên để lọc danh sách",
         )
 
-        # Lọc danh sách nếu có tìm kiếm
         if search_term:
             filtered_codes = [
                 code
@@ -520,16 +227,13 @@ if (
             ]
             if filtered_codes:
                 display_codes = filtered_codes
-                st.success(f"Tìm thấy {len(filtered_codes)} sinh viên phù hợp")
+                st.success(f"Tìm thấy {len(filtered_codes)} sinh viên")
             else:
-                st.warning(
-                    f"Không tìm thấy sinh viên nào với từ khóa '{search_term}'"
-                )
+                st.warning(f"Không tìm thấy '{search_term}'")
                 display_codes = sorted_student_codes
         else:
             display_codes = sorted_student_codes
 
-        # Dropdown chọn mã sinh viên
         selected_student = st.selectbox(
             f"Chọn mã sinh viên ({len(display_codes)} sinh viên):",
             options=display_codes,
@@ -539,13 +243,13 @@ if (
 
         if selected_student and selected_student in student_options:
             user_id = student_options[selected_student]
-            st.info(f"Mã sinh viên: **{selected_student}** (User ID: {user_id})")
+            # Selected student - no notification needed
+            pass
         else:
             st.warning("Vui lòng chọn mã sinh viên hợp lệ")
             user_id = None
 
     else:
-        # Input mã sinh viên dạng string
         student_code_input = st.text_input(
             "Nhập mã sinh viên (ví dụ: B21DCVT013):",
             placeholder="B21DCVT013",
@@ -554,35 +258,32 @@ if (
 
         user_id = None
         if student_code_input:
-            # Tìm user_id từ mã sinh viên
             for uid, token in enumerate(user_id2token):
-                if uid > 0 and token == student_code_input:  # Bỏ qua [PAD] tại index 0
+                if uid > 0 and token == student_code_input:
                     user_id = uid
                     break
 
             if user_id:
-                st.success(
-                    f"Tìm thấy sinh viên: **{student_code_input}** (User ID: {user_id})"
-                )
+                st.success(f"Tìm thấy: {student_code_input}")
             else:
-                st.error(f"Không tìm thấy mã sinh viên: **{student_code_input}**")
-                st.info(
-                    "Gợi ý: Hãy thử nhập chính xác mã sinh viên từ danh sách hoặc sử dụng chế độ Dropdown"
-                )
+                st.error(f"Không tìm thấy: {student_code_input}")
 
-    # Chọn số lượng recommendation
+    # ========================================================================
+    # Generate Recommendations
+    # ========================================================================
+    
     topk = st.selectbox(
         "Số lượng gợi ý bài tập:",
         options=[1, 2, 5, 10, 20],
-        index=3,  # Mặc định chọn 10
+        index=3,
         help="Chọn số lượng bài tập bạn muốn nhận gợi ý",
     )
 
     if st.button("Tạo gợi ý bài tập"):
         if user_id is None or user_id <= 0:
-            st.error("Vui lòng chọn sinh viên hợp lệ trước khi tạo gợi ý!")
+            st.error("Vui lòng chọn sinh viên trước khi tạo gợi ý")
         else:
-            # Xóa giải thích cũ khi tạo gợi ý mới
+            # Xóa giải thích cũ
             if "explanation" in st.session_state:
                 del st.session_state.explanation
 
@@ -594,20 +295,16 @@ if (
                     item_details = load_item_details()
 
                 if input_method == "Dropdown mã sinh viên":
-                    st.success(
-                        f"Top {topk} gợi ý bài tập cho sinh viên **{selected_student}**:"
-                    )
+                    st.success(f"Top {topk} gợi ý cho {selected_student}")
                 else:
                     student_code = (
                         user_id2token[user_id]
                         if user_id < len(user_id2token)
                         else f"User_{user_id}"
                     )
-                    st.success(
-                        f"Top {topk} gợi ý bài tập cho **{student_code}** (ID: {user_id}):"
-                    )
+                    st.success(f"Top {topk} gợi ý cho {student_code}")
 
-                # Hiển thị kết quả dưới dạng cards
+                # Hiển thị kết quả
                 cols_per_row = 2
                 for i in range(0, len(recs), cols_per_row):
                     cols = st.columns(cols_per_row)
@@ -619,7 +316,6 @@ if (
                             )
 
                             with cols[j]:
-                                # Tạo card cho mỗi bài tập với class cho animation
                                 st.markdown(
                                     f"""
                                     <div class="recommendation-card">
@@ -641,17 +337,12 @@ if (
                                     unsafe_allow_html=True,
                                 )
 
-                # Lưu kết quả vào session state để tránh mất dữ liệu
-                if "current_recs" not in st.session_state:
-                    st.session_state.current_recs = recs
-                    st.session_state.current_user = user_id
-                    st.session_state.current_items = item_details
-                else:
-                    st.session_state.current_recs = recs
-                    st.session_state.current_user = user_id
-                    st.session_state.current_items = item_details
+                # Lưu vào session state
+                st.session_state.current_recs = recs
+                st.session_state.current_user = user_id
+                st.session_state.current_items = item_details
 
-                # Hiển thị thông tin chi tiết trong expander
+                # Chi tiết kết quả
                 with st.expander("Chi tiết kết quả"):
                     st.write("**Giải thích:**")
                     st.write("- **STT**: Thứ tự gợi ý (cao đến thấp)")
@@ -661,8 +352,6 @@ if (
                     st.write("- **Chủ đề phụ**: Chủ đề phụ của bài tập")
                     st.write("- **Độ khó**: Mức độ khó của bài tập")
 
-                    # Hiển thị bảng tóm tắt
-                    st.write("**Bảng tóm tắt:**")
                     import pandas as pd
 
                     df_data = []
@@ -686,132 +375,50 @@ if (
                     st.dataframe(df, use_container_width=True, hide_index=True)
 
             except Exception as e:
-                st.error(f"Lỗi khi tạo gợi ý: {str(e)}")
-                st.error("Chi tiết lỗi:")
+                st.toast(f"❌ Lỗi: {str(e)}", icon="❌")
                 st.code(str(e))
 
-# ===== GIAO DIỆN AI EXPLAINER =====
-if LLM_AVAILABLE:
-    st.subheader("Giải Thích Bằng AI")
+    # ========================================================================
+    # AI Explainer (simplified - keeping original logic)
+    # ========================================================================
+    
+    if LLM_AVAILABLE:
+        st.subheader("Giải Thích Bằng AI")
 
-    # Chọn loại AI service
-    ai_service = st.radio(
-        "Chọn dịch vụ AI:",
-        ["Mistral Cloud", "Ollama (Local)"],
-        horizontal=True,
-        key="ai_service_selector"
-    )
-
-    if ai_service == "Mistral Cloud":
-        st.markdown("#### Cấu hình Mistral AI")
-        
-        # Load API key from environment
-        mistral_api_key = os.getenv("MISTRALAI_API_KEY")
-        
-        if mistral_api_key:
-            st.success("✓ API Key đã được load từ biến môi trường")
-        else:
-            st.error("⚠️ Không tìm thấy MISTRALAI_API_KEY trong file .env")
-            st.info("Vui lòng thêm MISTRALAI_API_KEY vào file .env")
-        
-        mistral_model = st.selectbox(
-            "Model:",
-            ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
-            index=0,
-            key="mistral_model"
+        ai_service = st.radio(
+            "Chọn dịch vụ AI:",
+            ["Mistral Cloud", "Ollama (Local)"],
+            horizontal=True,
+            key="ai_service_selector"
         )
 
-        if st.button("Tạo giải thích với Mistral", type="primary", key="mistral_explain", disabled=not mistral_api_key):
-            if "current_recs" not in st.session_state or not st.session_state.current_recs:
-                st.error("Vui lòng tạo gợi ý bài tập trước!")
+        if ai_service == "Mistral Cloud":
+            st.markdown("#### Cấu hình Mistral AI")
+            
+            mistral_api_key = os.getenv("MISTRALAI_API_KEY")
+            
+            if mistral_api_key:
+                # API key loaded - no notification needed
+                pass
             else:
-                try:
-                    user_id = st.session_state.current_user
-                    recs = st.session_state.current_recs
-                    item_details = st.session_state.current_items
-
-                    student_code = (
-                        user_id2token[user_id]
-                        if user_id < len(user_id2token)
-                        else f"User_{user_id}"
-                    )
-
-                    rec_data = []
-                    for item_internal_id, item_external_id, score in recs:
-                        item_info = get_item_display_info(item_external_id, item_details)
-                        rec_data.append({
-                            "title": item_info["title"],
-                            "topic": item_info["topic"],
-                            "difficulty": item_info["difficulty"],
-                            "score": score,
-                        })
-
-                    explainer = MistralCloudExplainer(mistral_api_key, mistral_model)
-
-                    with st.spinner(f"Đang xử lý với {mistral_model}..."):
-                        explanation = explainer.explain_recommendations(student_code, rec_data)
-
-                    st.session_state.explanation = explanation
-                    st.success("Giải thích đã được tạo! Xem bên dưới.")
-
-                except Exception as e:
-                    st.error(f"Lỗi Mistral AI: {str(e)}")
-                    st.info("Kiểm tra API key và kết nối internet")
-
-    else:  # Ollama (Local)
-        st.markdown("#### Cấu hình Ollama")
-        col1, col2 = st.columns(2)
-        with col1:
-            model_options = ["mistral", "llama2", "phi3:mini", "codellama"]
-            model_name = st.selectbox(
-                "Model:", model_options, index=0, key="global_ollama_model"
-            )
-        with col2:
-            base_url = st.text_input(
-                "Ollama URL:", "http://localhost:11434", key="global_ollama_url"
+                st.error("Không tìm thấy MISTRALAI_API_KEY trong .env")
+            
+            mistral_model = st.selectbox(
+                "Model:",
+                ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
+                index=0,
+                key="mistral_model"
             )
 
-        # Test connection và Create explanation
-        col_test, col_explain = st.columns(2)
-
-        with col_test:
-            if st.button("Test kết nối", key="global_test_connection"):
-                with st.spinner("Đang kiểm tra kết nối..."):
-                    try:
-                        import requests
-
-                        response = requests.get(f"{base_url}/api/tags", timeout=5)
-                        if response.status_code == 200:
-                            models = response.json().get("models", [])
-                            model_names = [m["name"] for m in models]
-                            if model_names:
-                                st.success(f"Models: {', '.join(model_names)}")
-                            else:
-                                st.warning("Chưa có model. Chạy: `ollama pull mistral`")
-                        else:
-                            st.error("Server không phản hồi")
-                    except Exception as e:
-                        st.error(f"Lỗi: {str(e)}")
-                        st.info("Chạy: `ollama serve`")
-
-        with col_explain:
-            if st.button(
-                "Tạo giải thích", type="primary", key="global_create_explanation"
-            ):
-                # Kiểm tra có kết quả gợi ý không
-                if (
-                    "current_recs" not in st.session_state
-                    or not st.session_state.current_recs
-                ):
-                    st.error("Vui lòng tạo gợi ý bài tập trước!")
+            if st.button("Tạo giải thích với Mistral", type="primary", key="mistral_explain", disabled=not mistral_api_key):
+                if "current_recs" not in st.session_state or not st.session_state.current_recs:
+                    st.toast("⚠️ Tạo gợi ý trước!", icon="⚠️")
                 else:
                     try:
-                        # Sử dụng dữ liệu từ session_state
                         user_id = st.session_state.current_user
                         recs = st.session_state.current_recs
                         item_details = st.session_state.current_items
 
-                        # Chuẩn bị dữ liệu
                         student_code = (
                             user_id2token[user_id]
                             if user_id < len(user_id2token)
@@ -820,53 +427,123 @@ if LLM_AVAILABLE:
 
                         rec_data = []
                         for item_internal_id, item_external_id, score in recs:
-                            item_info = get_item_display_info(
-                                item_external_id, item_details
-                            )
-                            rec_data.append(
-                                {
-                                    "title": item_info["title"],
-                                    "topic": item_info["topic"],
-                                    "difficulty": item_info["difficulty"],
-                                    "score": score,
-                                }
-                            )
+                            item_info = get_item_display_info(item_external_id, item_details)
+                            rec_data.append({
+                                "title": item_info["title"],
+                                "topic": item_info["topic"],
+                                "difficulty": item_info["difficulty"],
+                                "score": score,
+                            })
 
-                        explainer = OllamaExplainer(model_name, base_url)
+                        explainer = MistralCloudExplainer(mistral_api_key, mistral_model)
 
-                        with st.spinner(f"Đang xử lý với {model_name}..."):
-                            explanation = explainer.explain_recommendations(
-                                student_code, rec_data
-                            )
+                        with st.spinner(f"Đang xử lý với {mistral_model}..."):
+                            explanation = explainer.explain_recommendations(student_code, rec_data)
 
-                        # Lưu explanation vào session_state
                         st.session_state.explanation = explanation
-                        st.success("Giải thích đã được tạo! Xem bên dưới.")
+                        st.success("Giải thích đã được tạo")
 
                     except Exception as e:
-                        st.error(f"Lỗi Ollama: {str(e)}")
-                        st.info("Thử: `ollama serve` và `ollama pull mistral`")
+                        st.error(f"Lỗi Mistral AI: {str(e)}")
 
-# ===== HIỂN THỊ GIẢI THÍCH TỪ SESSION STATE =====
-if LLM_AVAILABLE and "explanation" in st.session_state and st.session_state.explanation:
-    st.subheader("Giải Thích Từ AI")
+        else:  # Ollama (Local)
+            st.markdown("#### Cấu hình Ollama")
+            col1, col2 = st.columns(2)
+            with col1:
+                model_options = ["mistral", "llama2", "phi3:mini", "codellama"]
+                model_name = st.selectbox(
+                    "Model:", model_options, index=0, key="global_ollama_model"
+                )
+            with col2:
+                base_url = st.text_input(
+                    "Ollama URL:", "http://localhost:11434", key="global_ollama_url"
+                )
 
-    # Hiển thị đơn giản với st.info để đảm bảo màu text đúng
-    st.info("**Phân tích từ AI:**")
+            col_test, col_explain = st.columns(2)
+
+            with col_test:
+                if st.button("Test kết nối", key="global_test_connection"):
+                    with st.spinner("Đang kiểm tra kết nối..."):
+                        try:
+                            import requests
+
+                            response = requests.get(f"{base_url}/api/tags", timeout=5)
+                            if response.status_code == 200:
+                                models = response.json().get("models", [])
+                                model_names = [m["name"] for m in models]
+                                if model_names:
+                                    st.success(f"Models: {', '.join(model_names)}")
+                                else:
+                                    st.warning("Chưa có model. Chạy: ollama pull mistral")
+                            else:
+                                st.error("Server không phản hồi")
+                        except Exception as e:
+                            st.error(f"Lỗi: {str(e)}")
+
+            with col_explain:
+                if st.button(
+                    "Tạo giải thích", type="primary", key="global_create_explanation"
+                ):
+                    if (
+                        "current_recs" not in st.session_state
+                        or not st.session_state.current_recs
+                    ):
+                        st.warning("Vui lòng tạo gợi ý bài tập trước")
+                    else:
+                        try:
+                            user_id = st.session_state.current_user
+                            recs = st.session_state.current_recs
+                            item_details = st.session_state.current_items
+
+                            student_code = (
+                                user_id2token[user_id]
+                                if user_id < len(user_id2token)
+                                else f"User_{user_id}"
+                            )
+
+                            rec_data = []
+                            for item_internal_id, item_external_id, score in recs:
+                                item_info = get_item_display_info(
+                                    item_external_id, item_details
+                                )
+                                rec_data.append(
+                                    {
+                                        "title": item_info["title"],
+                                        "topic": item_info["topic"],
+                                        "difficulty": item_info["difficulty"],
+                                        "score": score,
+                                    }
+                                )
+
+                            explainer = OllamaExplainer(model_name, base_url)
+
+                            with st.spinner(f"Đang xử lý với {model_name}..."):
+                                explanation = explainer.explain_recommendations(
+                                    student_code, rec_data
+                                )
+
+                            st.session_state.explanation = explanation
+                            st.success("Giải thích đã được tạo")
+
+                        except Exception as e:
+                            st.error(f"Lỗi Ollama: {str(e)}")
+
+    # ========================================================================
+    # Display AI Explanation
+    # ========================================================================
     
-    # Sử dụng st.text_area để hiển thị đầy đủ và có màu text rõ ràng
-    st.text_area(
-        label="",
-        value=st.session_state.explanation,
-        height=200,
-        disabled=True,
-        label_visibility="collapsed"
-    )
-
-    # Nút xóa giải thích
-    if st.button("Xóa giải thích", key="clear_explanation_global"):
-        del st.session_state.explanation
-        st.rerun()
+    if LLM_AVAILABLE and "explanation" in st.session_state and st.session_state.explanation:
+        st.markdown("---")
+        st.subheader("💬 Phân tích từ AI")
+        
+        # Display explanation in a nice container
+        st.markdown(st.session_state.explanation)
+        
+        col1, col2, col3 = st.columns([1, 1, 4])
+        with col1:
+            if st.button("🗑️ Xóa giải thích", key="clear_explanation_global"):
+                del st.session_state.explanation
+                st.rerun()
 
 else:
     st.warning("Vui lòng chọn và load model trước khi sử dụng")
