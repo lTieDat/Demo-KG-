@@ -3,7 +3,6 @@ Model loading and checkpoint compatibility utilities
 """
 import os
 import torch
-import streamlit as st
 from recbole.config import Config
 from recbole.data import create_dataset, data_preparation
 from recbole.utils import init_seed
@@ -94,61 +93,60 @@ def load_trained_model(model_path, config_file="config.yaml"):
         # Load checkpoint with KGAT_UserKG aliased to KGAT
         checkpoint = torch.load(model_path, map_location='cpu', weights_only=False)
 
-        # Hiển thị thông tin checkpoint từ state_dict
+        # Load checkpoint info (silently, no UI output)
         if "state_dict" in checkpoint:
             state_dict = checkpoint["state_dict"]
-            if "user_embedding.weight" in state_dict:
-                embedding_dim = state_dict["user_embedding.weight"].shape[1]
-                st.info(f"Embedding dim: {embedding_dim}")
+            # Just extract info, don't display
 
-        st.info(f"Epoch: {checkpoint.get('epoch', 'N/A')}")
-        st.info(f"Best validation score: {checkpoint.get('best_valid_score', 'N/A')}")
-
-        # Sử dụng config local và load state_dict
-        if os.path.exists(config_file):
-            st.info("Loading model từ config.yaml...")
-            config = Config(model="KGCN", config_file_list=[config_file])
-            
-            # Override dataset path to use relative path instead of absolute
-            config['data_path'] = 'dataset'
-            config['dataset'] = 'code-ptit-100k'
-
-            # Khởi tạo dataset với config local
-            init_seed(config["seed"], config["reproducibility"])
-            dataset = create_dataset(config)
-            train_data, valid_data, test_data = data_preparation(config, dataset)
-
-            # Khởi tạo model với config local
-            model = KGCN(config, dataset).to(config["device"])
-
-            # Load state_dict từ checkpoint
-            try:
-                missing_keys, unexpected_keys = model.load_state_dict(
-                    checkpoint["state_dict"], strict=False
-                )
-                model.eval()
-
-                if missing_keys or unexpected_keys:
-                    st.warning(
-                        f"Loaded với strict=False. Missing: {len(missing_keys)}, Unexpected: {len(unexpected_keys)}"
-                    )
-                else:
-                    st.success("State_dict loaded hoàn toàn")
-
-                st.success(f"Model loaded! Epoch: {checkpoint.get('epoch', 'N/A')}")
-
-                return config, model, dataset
-
-            except Exception as strict_error:
-                st.error(f"Không thể load state_dict: {str(strict_error)}")
-                return None, None, None
-
-        else:
-            st.error(
-                "Không tìm thấy config.yaml. Vui lòng đảm bảo file config.yaml tồn tại."
-            )
+        # Find config.yaml - try multiple locations
+        # 1. Relative to current directory
+        # 2. Relative to this file's directory (utils/)
+        # 3. Relative to project root
+        config_paths = [
+            config_file,  # Current directory
+            os.path.join(os.path.dirname(__file__), "..", config_file),  # Project root from utils/
+            os.path.join(os.path.dirname(model_path), "..", "..", config_file),  # Project root from saved/
+        ]
+        
+        config_file_path = None
+        for path in config_paths:
+            if os.path.exists(path):
+                config_file_path = path
+                break
+        
+        if config_file_path is None:
             return None, None, None
 
+        config = Config(model="KGCN", config_file_list=[config_file_path])
+        
+        # Override dataset path to use absolute path from project root
+        project_root = os.path.dirname(os.path.dirname(__file__))  # Go up from utils/ to project root
+        config['data_path'] = os.path.join(project_root, 'dataset')
+        config['dataset'] = 'code-ptit-100k'
+
+        # Khởi tạo dataset với config local
+        init_seed(config["seed"], config["reproducibility"])
+        dataset = create_dataset(config)
+        train_data, valid_data, test_data = data_preparation(config, dataset)
+
+        # Khởi tạo model với config local
+        model = KGCN(config, dataset).to(config["device"])
+
+        # Load state_dict từ checkpoint
+        try:
+            missing_keys, unexpected_keys = model.load_state_dict(
+                checkpoint["state_dict"], strict=False
+            )
+            model.eval()
+
+            # Load successful (no UI output)
+            return config, model, dataset
+
+        except Exception as strict_error:
+            # Load failed
+            return None, None, None
+
+
     except Exception as e:
-        st.error(f"Lỗi khi load model: {str(e)}")
+        # Return None on error
         return None, None, None

@@ -1,5 +1,4 @@
 import openai
-import streamlit as st
 from typing import List, Dict, Any, Optional
 
 
@@ -120,26 +119,34 @@ class MistralCloudExplainer:
     ) -> str:
         """Giải thích sử dụng Mistral AI từ cloud"""
         context = self._build_context(student_code, recommendations)
+        
+        # Extract data for prompt (convert to strings to avoid join errors)
+        topics = ', '.join(set([str(r['topic']) for r in recommendations[:5]]))
+        difficulties = ', '.join(set([str(r['difficulty']) for r in recommendations[:5]]))
+        first_title = recommendations[0]['title']
+        second_title = recommendations[1]['title'] if len(recommendations) > 1 else ''
 
-        prompt = f"""Bạn là giáo viên lập trình có kinh nghiệm. Hãy phân tích danh sách gợi ý bài tập sau và giải thích tại sao chúng phù hợp:
+        prompt = f"""Bạn là giáo viên lập trình có kinh nghiệm. Hãy phân tích danh sách gợi ý bài tập CỤ THỂ sau đây và giải thích tại sao chúng phù hợp cho sinh viên {student_code}.
 
 {context}
 
-Hãy viết một phân tích chi tiết bao gồm:
+QUAN TRỌNG: Hãy phân tích DỰA TRÊN DỮ LIỆU THỰC TẾ ở trên, KHÔNG được tạo ra thông tin giả. Hãy viết một phân tích chi tiết bao gồm:
 
 **1. Phân tích tổng quan:**
-- Chủ đề chính của các bài tập được gợi ý
-- Mức độ khó và sự phân bố
+- Liệt kê CỤ THỂ các chủ đề chính xuất hiện trong danh sách (ví dụ: {topics})
+- Phân tích mức độ khó: {difficulties}
+- Nhận xét về sự phân bố độ khó
 
 **2. Lý do gợi ý:**
-- Tại sao những bài tập này phù hợp với sinh viên
-- Sự liên kết giữa các chủ đề
+- Giải thích tại sao những bài tập CỤ THỂ này (như "{first_title}", "{second_title}") phù hợp
+- Phân tích sự liên kết giữa các chủ đề trong danh sách
+- Giải thích tại sao thứ tự này hợp lý cho việc học tập
 
 **3. Lộ trình học tập:**
-- Thứ tự nên làm bài
-- Kỹ năng sẽ phát triển
+- Đề xuất thứ tự làm bài DỰA TRÊN danh sách trên
+- Kỹ năng cụ thể sẽ phát triển qua từng bài
 
-Viết bằng tiếng Việt, đầy đủ và dễ hiểu."""
+Viết bằng tiếng Việt, đầy đủ và dễ hiểu. PHẢI đề cập đến TÊN BÀI TẬP CỤ THỂ từ danh sách."""
 
         try:
             response = self.client.chat.complete(
@@ -160,9 +167,12 @@ Viết bằng tiếng Việt, đầy đủ và dễ hiểu."""
             return f"Không thể kết nối Mistral AI: {str(e)}"
 
     def _build_context(self, student_code: str, recommendations: List[Dict]) -> str:
-        context = f"Sinh viên: {student_code}\nBài tập gợi ý:\n"
+        context = f"**Sinh viên:** {student_code}\n\n**Danh sách bài tập được gợi ý (theo thứ tự ưu tiên):**\n\n"
         for i, rec in enumerate(recommendations, 1):
-            context += f"{i}. {rec['title']} ({rec['topic']}, {rec['difficulty']})\n"
+            context += f"{i}. **{rec['title']}**\n"
+            context += f"   - Chủ đề: {rec['topic']}\n"
+            context += f"   - Chủ đề phụ: {rec.get('sub_topic', 'N/A')}\n"
+            context += f"   - Độ khó: {rec['difficulty']}\n\n"
         return context
 
 

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống gợi ý bài tập Code PTIT</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+    
+    <!-- Marked.js for markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    
+    <!-- Header -->
+    <header class="bg-white shadow-md">
+        <div class="container mx-auto px-4 py-6">
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Hệ thống gợi ý bài tập Code PTIT
+            </h1>
+            <p class="text-gray-600 mt-2">Sử dụng Knowledge Graph Convolutional Network để gợi ý bài tập cho sinh viên</p>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            
+            <!-- Sidebar -->
+            <aside class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow-lg p-6 sticky top-4">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Cấu hình Model</h2>
+                    
+                    <!-- Model Selection -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Chọn model:</label>
+                        <select id="modelSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Đang tải...</option>
+                        </select>
+                    </div>
+                    
+                    <button id="loadModelBtn" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Load Model
+                    </button>
+                    
+                    <!-- Model Info -->
+                    <div id="modelInfo" class="mt-4 hidden">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Thông tin Model:</h3>
+                        <div class="text-sm text-gray-600 space-y-1">
+                            <p><span class="font-medium">Epoch:</span> <span id="modelEpoch">-</span></p>
+                            <p><span class="font-medium">Score:</span> <span id="modelScore">-</span></p>
+                            <p><span class="font-medium">Users:</span> <span id="modelUsers">-</span></p>
+                            <p><span class="font-medium">Items:</span> <span id="modelItems">-</span></p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="lg:col-span-3">
+                
+                <!-- Student Selection -->
+                <section class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Chọn sinh viên</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Search Input -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tìm kiếm mã sinh viên:</label>
+                            <input 
+                                type="text" 
+                                id="studentSearch" 
+                                placeholder="Nhập mã sinh viên (VD: B21DCVT013)" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                        </div>
+                        
+                        <!-- Student Dropdown -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Chọn từ danh sách:</label>
+                            <select id="studentSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">Vui lòng load model trước</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Selected Student Info -->
+                    <div id="selectedStudentInfo" class="mt-4 hidden">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <p class="text-sm text-blue-800">
+                                <span class="font-medium">Đã chọn:</span> 
+                                <span id="selectedStudentCode">-</span> 
+                                (User ID: <span id="selectedUserId">-</span>)
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Generate Recommendations -->
+                    <div class="mt-4 flex items-center gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Số lượng gợi ý:</label>
+                            <select id="topkSelect" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="20">20</option>
+                            </select>
+                        </div>
+                        
+                        <button id="generateBtn" class="mt-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-2 px-6 rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Tạo gợi ý bài tập
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Loading Spinner -->
+                <div id="loadingSpinner" class="hidden">
+                    <div class="bg-white rounded-xl shadow-lg p-8 text-center">
+                        <div class="spinner mx-auto mb-4"></div>
+                        <p class="text-gray-600 font-medium">Đang tạo gợi ý...</p>
+                    </div>
+                </div>
+
+                <!-- Recommendations -->
+                <section id="recommendationsSection" class="hidden">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Gợi ý bài tập</h2>
+                    <div id="recommendationsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Recommendations will be inserted here -->
+                    </div>
+                </section>
+
+                <!-- AI Explainer -->
+                <section id="explainerSection" class="hidden mt-6">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4">💬 Giải thích bằng AI</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Chọn dịch vụ:</label>
+                                <select id="aiService" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="mistral">Mistral Cloud</option>
+                                    <option value="ollama">Ollama (Local)</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Model:</label>
+                                <select id="aiModel" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="mistral-small-latest">Mistral Small</option>
+                                    <option value="mistral-medium-latest">Mistral Medium</option>
+                                    <option value="mistral-large-latest">Mistral Large</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button id="explainBtn" class="bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold py-2 px-6 rounded-lg hover:shadow-lg transition-all duration-300">
+                            Tạo giải thích
+                        </button>
+                        
+                        <!-- Explanation Result -->
+                        <div id="explanationResult" class="mt-4 hidden">
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <div class="flex justify-between items-center mb-2">
+                                    <h3 class="font-semibold text-gray-800">Phân tích từ AI:</h3>
+                                    <button id="clearExplanationBtn" class="text-sm text-red-600 hover:text-red-800">
+                                        🗑️ Xóa
+                                    </button>
+                                </div>
+                                <div id="explanationContent" class="prose prose-sm max-w-none">
+                                    <!-- Explanation will be rendered here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-white rounded-lg shadow-xl p-4 transform translate-y-full transition-transform duration-300 max-w-sm">
+        <div class="flex items-center gap-3">
+            <div id="toastIcon" class="text-2xl"></div>
+            <p id="toastMessage" class="text-gray-800 font-medium"></p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/components.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
