@@ -1,0 +1,272 @@
+item_id:token	question_id:token	name:token_seq	group:token_seq	type:token_seq	level:token
+1	CPP0101	TÍNH TỔNG 1 ĐẾN N	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	1
+2	CPP0102	CHỮ HOA – CHỮ THƯỜNG	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	1
+3	CPP0103	TÍNH TỔNG PHÂN THỨC - 1	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	1
+4	CPP0104	TÍNH TỔNG GIAI THỪA	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	1
+5	CPP0105	SỐ LỘC PHÁT	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	1
+6	CPP0106	SỐ THUẬN NGHỊCH	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	1
+7	CPP0107	CHẤM ĐIỂM TRẮC NGHIỆM	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	1
+8	CPP0109	CÂN BẰNG CHẴN LẺ	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	1
+9	CPP0110	MÃ SỐ QUỐC GIA	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	1
+10	CPP0111	SỐ LIỀN KỀ	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	1
+11	CPP0112	KHOẢNG CÁCH	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	1
+12	CPP0113	SỐ MAY MẮN	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	1
+13	CPP0115	PHÂN TÍCH THỪA SỐ NGUYÊN TỐ - 1	LẬP TRÌNH C++ CƠ BẢN	Ước số và Ước số chung lớn nhất	1
+14	CPP0117	TÍNH TỔNG CHỮ SỐ	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	1
+15	CPP0121	ƯỚC SỐ CHUNG - BỘI SỐ CHUNG	LẬP TRÌNH C++ CƠ BẢN	Ước số và Ước số chung lớn nhất	1
+16	CPP0122	ƯỚC SỐ CHUNG LỚN NHẤT CỦA N SỐ NGUYÊN DƯƠNG ĐẦU TIÊN	LẬP TRÌNH C++ CƠ BẢN	Ước số và Ước số chung lớn nhất	1
+17	CPP0123	KIỂM TRA NGUYÊN TỐ	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+18	CPP0124	PHÂN TÍCH THỪA SỐ NGUYÊN TỐ - 2	LẬP TRÌNH C++ CƠ BẢN	Ước số và Ước số chung lớn nhất	1
+19	CPP0125	LIỆT KÊ SỐ NGUYÊN TỐ - 1	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+20	CPP0126	LIỆT KÊ SỐ NGUYÊN TỐ - 2	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+21	CPP0127	CẶP SỐ NGUYÊN TỐ ĐẦU TIÊN CÓ TỔNG BẰNG N	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+22	CPP0130	ƯỚC SỐ NGUYÊN TỐ	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+23	CPP0132	ƯỚC SỐ NGUYÊN TỐ LỚN NHẤT	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+24	CPP0133	ƯỚC SỐ NGUYÊN TỐ NHỎ HƠN N	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+25	CPP0134	ƯỚC SỐ NGUYÊN TỐ THỨ K	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+26	CPP0135	LIỆT KÊ SỐ CÓ BA ƯỚC SỐ	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+27	CPP0138	CẶP SỐ NGUYÊN TỐ	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+28	CPP0143	SỐ FIBONACCI THỨ N	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+29	CPP0152	CHIA DƯ	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+30	CPP0153	CHIA DƯ TỪ 1 ĐẾN N	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+31	CPP0154	TỔNG CHIA DƯ CHO K	LẬP TRÌNH C++ CƠ BẢN	Số học	1
+32	CPP0201	CHÊNH LỆCH NHỎ NHẤT	MẢNG VÀ CON TRỎ	Mảng một chiều	1
+33	CPP0202	KHOẢNG CÁCH NHỎ NHẤT	MẢNG VÀ CON TRỎ	Mảng một chiều	1
+34	CPP0203	SỐ NHỎ NHẤT CHƯA XUẤT HIỆN	MẢNG VÀ CON TRỎ	Mảng một chiều	1
+35	CPP0205	DÃY TAM GIÁC	MẢNG VÀ CON TRỎ	Mảng một chiều	1
+36	CPP0206	PHẦN TỬ LỚN NHẤT	MẢNG VÀ CON TRỎ	Mảng một chiều	1
+37	CPP0207	QUAY VÒNG DÃY SỐ 1	MẢNG VÀ CON TRỎ	Mảng một chiều	1
+38	CPP0208	PHẦN TỬ NHỎ NHẤT THỨ K	MẢNG VÀ CON TRỎ	Mảng một chiều	1
+39	CPP0209	TÍNH TỔNG TRONG KHOẢNG	MẢNG VÀ CON TRỎ	Mảng một chiều	1
+40	CPP0219	BIẾN ĐỔI NHỊ PHÂN	MẢNG VÀ CON TRỎ	Mảng hai chiều	1
+41	CPP0220	BIÊN CỦA MA TRẬN	MẢNG VÀ CON TRỎ	Mảng hai chiều	1
+42	CPP0227	IN MA TRẬN - 1	MẢNG VÀ CON TRỎ	Mảng hai chiều	1
+43	CPP0230	MA TRẬN NHỊ PHÂN	MẢNG VÀ CON TRỎ	Mảng hai chiều	1
+44	CPP0244	LIỆT KÊ SỐ KHÁC NHAU	MẢNG VÀ CON TRỎ		1
+45	CPP0259	TÍCH MA TRẬN	MẢNG VÀ CON TRỎ	Mảng hai chiều	1
+46	CPP0274	ĐẾM SỐ PHẦN TỬ LẶP LẠI	MẢNG VÀ CON TRỎ	Mảng một chiều	1
+47	CPP0308	KÝ TỰ KHÔNG LẶP	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	1
+48	CPP0309	ĐẾM TỪ	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	1
+49	CPP0312	XÂU PANGRAM	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	1
+50	CPP0313	LOẠI BỎ TỪ TRONG XÂU	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	1
+51	CPP0314	CHÚC MỪNG NĂM MỚI	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	1
+52	CPP0317	SỐ ĐẸP	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	1
+53	CPP0319	NHỎ NHẤT - LỚN NHẤT	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	1
+54	CPP0325	CHIA HẾT CHO 11	XỬ LÝ XÂU KÝ TỰ	Xử lý số nguyên lớn	1
+55	CPP0327	CHIA HẾT CHO 5	XỬ LÝ XÂU KÝ TỰ	Xử lý số nguyên lớn	1
+56	CPP0332	ĐỊA CHỈ EMAIL - 1	XỬ LÝ XÂU KÝ TỰ	Các bài toán chuẩn hóa	1
+57	CPP0333	CHUẨN HÓA HỌ TÊN	XỬ LÝ XÂU KÝ TỰ	Các bài toán chuẩn hóa	1
+58	CPP0339	ĐẦU CUỐI GIỐNG NHAU	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	1
+59	CPP0343	DÃY ƯU THẾ	XỬ LÝ XÂU KÝ TỰ	Xử lý số nguyên lớn	1
+60	CPP0354	MÃ HÓA	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	1
+61	CPP0371	LOẠI BỎ NGUYÊN ÂM	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	1
+62	CPP0412	SẮP XẾP 0 -1 - 2	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	1
+63	CPP0413	SẮP XẾP XEN KẼ - 1	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	1
+64	CPP0414	SẮP XẾP CHỮ SỐ	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	1
+65	CPP0415	TÍNH TÍCH	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	1
+66	CPP0416	ĐẾM CẶP PHẦN TỬ CÓ TỔNG BẰNG K	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	1
+67	CPP0418	HỢP VÀ GIAO CỦA HAI DÃY SỐ -1	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	1
+68	CPP0421	SẮP ĐẶT DÃY SỐ	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	1
+69	CPP0422	SỐ 0 Ở CUỐI DÃY	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	1
+70	CPP0424	GHÉP DÃY SỐ	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	1
+71	CPP0428	TRỘN HAI DÃY VÀ SẮP XẾP	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	1
+72	CPP0430	BỔ SUNG PHẦN TỬ	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	1
+73	CPP0441	TÌM KIẾM TUẦN TỰ	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Tìm kiếm	1
+74	CPP0442	TÌM KIẾM NHỊ PHÂN	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Tìm kiếm	1
+75	CPP0443	SỐ NHỎ NHẤT CÒN THIẾU	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Tìm kiếm	1
+76	CPP0444	TÌM KIẾM TRONG DÃY SẮP XẾP VÒNG	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Tìm kiếm	1
+77	CPP0445	SỐ NHỎ NHẤT VÀ NHỎ THỨ HAI	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Tìm kiếm	1
+78	CPP0446	TỔNG GẦN 0 NHẤT	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Tìm kiếm	1
+79	CPP0447	LIỆT KÊ K PHẦN TỬ LỚN NHẤT	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Tìm kiếm	1
+80	CPP0448	ĐẾM SỐ LẦN XUẤT HIỆN	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Tìm kiếm	1
+81	CPP0450	PHẦN TỬ ĐẦU TIÊN LẶP LẠI	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Tìm kiếm	1
+82	CPP0501	CẤU TRÚC ĐIỂM	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Cấu trúc cơ bản	1
+83	CPP0502	CẤU TRÚC THÍ SINH	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Cấu trúc cơ bản	1
+84	CPP0503	CẤU TRÚC PHÂN SỐ	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Cấu trúc cơ bản	1
+85	CPP0504	CẤU TRÚC SINH VIÊN	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Cấu trúc cơ bản	1
+86	CPP0505	CẤU TRÚC NHÂN VIÊN	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Cấu trúc cơ bản	1
+87	CPP0507	TÍNH TỔNG HAI PHÂN SỐ	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Cấu trúc cơ bản	1
+88	CPP0517	DANH SÁCH NHÂN VIÊN	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	1
+89	CPP0601	KHAI BÁO LỚP SINH VIÊN - 1	LỚP VÀ ĐỐI TƯỢNG	Khai báo lớp	1
+90	CPP0602	KHAI BÁO LỚP SINH VIÊN - 2	LỚP VÀ ĐỐI TƯỢNG	Khai báo lớp	1
+91	CPP0603	KHAI BÁO LỚP SINH VIÊN - 3	LỚP VÀ ĐỐI TƯỢNG		1
+92	CPP0605	KHAI BÁO LỚP PHÂN SỐ	LỚP VÀ ĐỐI TƯỢNG	Khai báo lớp	1
+93	CPP0606	KHAI BÁO LỚP NHÂN VIÊN	LỚP VÀ ĐỐI TƯỢNG	Khai báo lớp	1
+94	CPP0610	TÍNH TỔNG HAI ĐỐI TƯỢNG PHÂN SỐ	LỚP VÀ ĐỐI TƯỢNG	Khai báo lớp	1
+95	CPP0711	LIỆT KÊ XÂU NHỊ PHÂN	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	1
+96	CPP0714	HOÁN VỊ LIỀN KỀ PHÍA TRƯỚC	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	1
+97	CPP0723	TÍCH GIAI THỪA CÁC CHỮ SỐ	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	1
+98	CPP0741	TÍNH LŨY THỪA	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	1
+99	CPP0743	ĐẢO TỪ	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	1
+100	CPP0745	TÍNH SỐ FIBONACCI LỚN	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	1
+101	CPP0801	SAO CHÉP TỆP TIN	LẬP TRÌNH C++ CƠ BẢN	Vào ra trên tệp	1
+102	CPP204C4000	CẤU TRÚC SINH VIÊN	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Cấu trúc cơ bản	1
+103	CPP0108	SỐ TĂNG GIẢM	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	2
+104	CPP0116	ƯỚC SỐ NGUYÊN TỐ NHỎ NHẤT	LẬP TRÌNH C++ CƠ BẢN	Số học	2
+105	CPP0118	SỐ SPHENIC	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	2
+106	CPP0119	ƯỚC SỐ CHIA HẾT CHO 2	LẬP TRÌNH C++ CƠ BẢN	Ước số và Ước số chung lớn nhất	2
+107	CPP0120	CHIA HẾT CHO A VÀ B	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	2
+108	CPP0131	ƯỚC SỐ NGUYÊN TỐ NHỎ NHẤT	LẬP TRÌNH C++ CƠ BẢN	Số học	2
+109	CPP0136	ĐẾM SỐ CÓ BA ƯỚC SỐ	LẬP TRÌNH C++ CƠ BẢN	Số học	2
+110	CPP0141	KIỂM TRA SỐ FIBONACCI	LẬP TRÌNH C++ CƠ BẢN	Số học	2
+111	CPP0142	NGUYÊN TỐ CÙNG NHAU	LẬP TRÌNH C++ CƠ BẢN	Ước số và Ước số chung lớn nhất	2
+112	CPP0173	CHIA HẾT CHO BA SỐ NGUYÊN	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	2
+113	CPP0181	SỐ LẶP LẠI	LẬP TRÌNH C++ CƠ BẢN	Kiểu dữ liệu - Viết vòng lặp - Viết hàm	2
+114	CPP0204	ĐẾM SỐ NGUYÊN TỐ	MẢNG VÀ CON TRỎ	Mảng một chiều	2
+115	CPP0210	HIỆU LỚN NHẤT CỦA CẶP PHẦN TỬ ĐÚNG THỨ TỰ	MẢNG VÀ CON TRỎ	Mảng một chiều	2
+116	CPP0212	TÍNH GIÁ TRỊ ĐA THỨC	MẢNG VÀ CON TRỎ	Mảng một chiều	2
+117	CPP0213	KIỂM TRA DÃY FIBONACCI	LẬP TRÌNH C++ CƠ BẢN	Số học	2
+118	CPP0216	DÃY MOUNTAIN	MẢNG VÀ CON TRỎ	Mảng một chiều	2
+119	CPP0217	PHẦN TỬ NHỎ NHẤT THỨ K CỦA MA TRẬN	MẢNG VÀ CON TRỎ	Mảng hai chiều	2
+120	CPP0221	QUAY MA TRẬN	MẢNG VÀ CON TRỎ	Mảng hai chiều	2
+121	CPP0222	ĐẾM PHẦN TỬ GIỐNG NHAU	MẢNG VÀ CON TRỎ	Mảng hai chiều	2
+122	CPP0223	MA TRẬN XOẮN ỐC - 1	MẢNG VÀ CON TRỎ	Mảng hai chiều	2
+123	CPP0224	ĐẾM SỐ MIỀN MA TRẬN	MẢNG VÀ CON TRỎ	Mảng hai chiều	2
+124	CPP0225	BIẾN ĐỔI MA TRẬN	MẢNG VÀ CON TRỎ	Mảng hai chiều	2
+125	CPP0232	HÌNH CHỮ NHẬT LỚN NHẤT - 1	MẢNG VÀ CON TRỎ	Mảng hai chiều	2
+126	CPP0241	BIẾN ĐỔI DÃY SỐ	MẢNG VÀ CON TRỎ	Mảng một chiều	2
+127	CPP0242	DÃY SỐ NHỊ PHÂN	MẢNG VÀ CON TRỎ	Mảng một chiều	2
+128	CPP0260	MA TRẬN XOẮN ỐC - 4	MẢNG VÀ CON TRỎ	Mảng hai chiều	2
+129	CPP0261	CỬA SỔ TRƯỢT	MẢNG VÀ CON TRỎ	Mảng hai chiều	2
+130	CPP0273	ĐIỂM CÂN BẰNG	MẢNG VÀ CON TRỎ		2
+131	CPP0307	HIỆU CỦA HAI TẬP TỪ	XỬ LÝ XÂU KÝ TỰ	Các bài toán chuẩn hóa	2
+132	CPP0310	TỔNG LỚN NHẤT VÀ NHỎ NHẤT	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	2
+133	CPP0311	SẮP ĐẶT XÂU KÝ TỰ - 1	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	2
+134	CPP0315	ĐỔI CHỖ CHỮ SỐ	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	2
+135	CPP0316	SỐ MAY MẮN - 2	XỬ LÝ XÂU KÝ TỰ	Xử lý số nguyên lớn	2
+136	CPP0318	BIỂN SỐ ĐẸP	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	2
+137	CPP0320	SỐ ĐẦY ĐỦ	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	2
+138	CPP0321	HIỆU HAI SỐ NGUYÊN LỚN	XỬ LÝ XÂU KÝ TỰ	Xử lý số nguyên lớn	2
+139	CPP0322	TỔNG HAI SỐ NGUYÊN LỚN	XỬ LÝ XÂU KÝ TỰ	Xử lý số nguyên lớn	2
+140	CPP0323	PHÉP CHIA DƯ CỦA SỐ NGUYÊN LỚN	XỬ LÝ XÂU KÝ TỰ	Xử lý số nguyên lớn	2
+141	CPP0324	PHÉP CHIA DƯ CỦA LŨY THỪA SỐ NGUYÊN LỚN	XỬ LÝ XÂU KÝ TỰ	Xử lý số nguyên lớn	2
+142	CPP0334	TÍNH TỔNG CÁC SỐ TRONG XÂU	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	2
+143	CPP0335	TÌM SỐ LỚN NHẤT TRONG XÂU	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	2
+144	CPP0338	ĐẾM XÂU CON	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	2
+145	CPP0342	TÁCH CHỮ SỐ	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	2
+146	CPP0351	CHUẨN HÓA HỌ TÊN	XỬ LÝ XÂU KÝ TỰ	Các bài toán chuẩn hóa	2
+147	CPP0352	ĐỊA CHỈ EMAIL - 2	XỬ LÝ XÂU KÝ TỰ		2
+148	CPP0353	ĐIỆN THOẠI CỤC GẠCH	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	2
+149	CPP0355	XỬ LÝ VĂN BẢN	XỬ LÝ XÂU KÝ TỰ	Các bài toán chuẩn hóa	2
+150	CPP0417	SẮP XẾP LẠI DÃY CON	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	2
+151	CPP0419	HỢP VÀ GIAO CỦA HAI DÃY SỐ - 2	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	2
+152	CPP0420	SẮP XẾP THEO KHOẢNG CÁCH	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	2
+153	CPP0423	SỐ NHỎ HƠN K	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	2
+154	CPP0425	SẮP XẾP CHẴN LẺ	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	2
+155	CPP0426	SẮP XẾP XEN KẼ - 2	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	2
+156	CPP0427	NHÂN ĐÔI CẶP SỐ BẰNG NHAU	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	2
+157	CPP0429	SỬA ĐÈN	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	2
+158	CPP0431	ĐẾM CẶP PHẦN TỬ CÓ HIỆU NHỎ HƠN K	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	2
+159	CPP0432	SẮP XẾP THEO CHỮ SỐ	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	2
+160	CPP0434	BIẾN ĐỔI DÃY SỐ - 2	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	2
+161	CPP0449	KHOẢNG CÁCH BẰNG X	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Tìm kiếm	2
+162	CPP0451	PHẦN TỬ GẦN NHẤT	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Tìm kiếm	2
+163	CPP0453	NHỎ NHẤT THỨ K	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Tìm kiếm	2
+164	CPP0454	TAM GIÁC VUÔNG	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	2
+165	CPP0512	PHÉP TOÁN VỚI PHÂN SỐ	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+166	CPP0513	DANH SÁCH SINH VIÊN - 1	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+167	CPP0514	DANH SÁCH SINH VIÊN - 2	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+168	CPP0515	DANH SÁCH SINH VIÊN - 3	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+169	CPP0516	SẮP XẾP DANH SÁCH MẶT HÀNG	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+170	CPP0518	SẮP XẾP DANH SÁCH NHÂN VIÊN	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+171	CPP0524	BẢNG ĐIỂM THÀNH PHẦN - 1	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+172	CPP0525	BẢNG ĐIỂM THÀNH PHẦN - 2	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+173	CPP0526	TRẺ NHẤT – GIÀ NHẤT	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+174	CPP0527	SẮP XẾP THỜI GIAN	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+175	CPP0528	DANH SÁCH THỰC TẬP - 1	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+176	CPP0529	DANH SÁCH THỰC TẬP - 2	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+177	CPP0534	SỐ THUẬN NGHỊCH GIẢM DẦN	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+178	CPP0544	DIỆN TÍCH HÌNH TRÒN NGOẠI TIẾP TAM GIÁC	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	2
+179	CPP0611	DANH SÁCH ĐỐI TƯỢNG SINH VIÊN - 1	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+180	CPP0612	DANH SÁCH ĐỐI TƯỢNG SINH VIÊN - 2	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+181	CPP0613	DANH SÁCH ĐỐI TƯỢNG SINH VIÊN - 3	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+182	CPP0614	DANH SÁCH ĐỐI TƯỢNG NHÂN VIÊN	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+183	CPP0615	SẮP XẾP DANH SÁCH ĐỐI TƯỢNG NHÂN VIÊN	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+184	CPP0620	SẮP XẾP SINH VIÊN THEO LỚP	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+185	CPP0621	SẮP XẾP THEO MÃ SINH VIÊN	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+186	CPP0622	LIỆT KÊ SINH VIÊN THEO LỚP	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+187	CPP0623	LIỆT KÊ SINH VIÊN THEO KHÓA	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+188	CPP0624	LIỆT KÊ SINH VIÊN THEO NGÀNH	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+189	CPP0625	SẮP XẾP DANH SÁCH GIẢNG VIÊN	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+190	CPP0626	DANH SÁCH GIẢNG VIÊN THEO BỘ MÔN	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+191	CPP0627	TÌM KIẾM GIẢNG VIÊN	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+192	CPP0628	DANH SÁCH DOANH NGHIỆP NHẬN SINH VIÊN THỰC TẬP - 1	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+193	CPP0629	DANH SÁCH DOANH NGHIỆP NHẬN SINH VIÊN THỰC TẬP - 2	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	2
+194	CPP0712	LIỆT KÊ TỔ HỢP	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	2
+195	CPP0713	LIỆT KÊ HOÁN VỊ	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	2
+196	CPP0721	DÃY CON TĂNG DÀI NHẤT	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	2
+197	CPP0722	DÃY SỐ CATALAN	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	2
+198	CPP0725	TÍNH SỐ TỔ HỢP	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	2
+199	CPP0726	PHÉP CHIA DƯ CỦA TÍCH HAI SỐ	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	2
+200	CPP0727	TỔNG LỚN NHẤT CỦA DÃY CON KHÔNG KỀ NHAU	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	2
+201	CPP0730	TỔNG LỚN NHẤT CỦA DÃY CON LIÊN TỤC	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	2
+202	CPP0737	DÃY CON TRUNG BÌNH LỚN NHẤT	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	2
+203	CPP0738	CỘNG 1 VÀ NHÂN ĐÔI	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	2
+204	CPP0739	GIẢI MÃ TĂNG GIẢM	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	2
+205	CPP0740	TÍCH LỚN NHẤT CỦA DÃY CON LIÊN TỤC	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	2
+206	CPP0747	LOẠI BỎ 100	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	2
+207	CPP0802	TÍNH TỔNG	CÁC BÀI TOÁN NÂNG CAO	Vào ra trên tệp	2
+208	CPP0803	SỐ KHÁC NHAU TRONG FILE	CÁC BÀI TOÁN NÂNG CAO	Vào ra trên tệp	2
+209	CPP0804	LIỆT KÊ TỪ KHÁC NHAU	CÁC BÀI TOÁN NÂNG CAO	Vào ra trên tệp	2
+210	CPP0805	HỢP VÀ GIAO CỦA HAI FILE VĂN BẢN	CÁC BÀI TOÁN NÂNG CAO	Vào ra trên tệp	2
+211	CPP0807	LỚP INTSET	CÁC BÀI TOÁN NÂNG CAO	Vào ra trên tệp	2
+212	CPP0129	ƯỚC SỐ CỦA GIAI THỪA	LẬP TRÌNH C++ CƠ BẢN	Ước số và Ước số chung lớn nhất	3
+213	CPP0137	LIỆT KÊ SỐ CÓ BA ƯỚC SỐ TRONG KHOẢNG	LẬP TRÌNH C++ CƠ BẢN	Số học	3
+214	CPP0139	SỐ SMITH	LẬP TRÌNH C++ CƠ BẢN	Số học	3
+215	CPP0156	ĐẾM SỐ NGHIỆM CỦA PHƯƠNG TRÌNH ĐỒNG DƯ	LẬP TRÌNH C++ CƠ BẢN	Số học	3
+216	CPP0211	KHOẢNG CÁCH XA NHẤT	MẢNG VÀ CON TRỎ	Mảng một chiều	3
+217	CPP0218	ĐỒNG DƯ VỚI K	MẢNG VÀ CON TRỎ	Mảng một chiều	3
+218	CPP0228	IN MA TRẬN - 2	MẢNG VÀ CON TRỎ	Mảng hai chiều	3
+219	CPP0229	IN MA TRẬN - 3	MẢNG VÀ CON TRỎ	Mảng hai chiều	3
+220	CPP0237	MA TRẬN VUÔNG LỚN NHẤT	MẢNG VÀ CON TRỎ	Mảng hai chiều	3
+221	CPP0243	SẮP ĐẶT HAI DÃY SỐ	MẢNG VÀ CON TRỎ	Mảng một chiều	3
+222	CPP0262	TẬP HỢP NGUYÊN TỐ CÙNG NHAU	MẢNG VÀ CON TRỎ	Mảng một chiều	3
+223	CPP0270	TÍCH CHẬP	MẢNG VÀ CON TRỎ	Mảng hai chiều	3
+224	CPP0271	LÀM MỊN ẢNH	MẢNG VÀ CON TRỎ	Mảng hai chiều	3
+225	CPP0272	TÍNH TOÁN TRÊN DÃY SỐ	MẢNG VÀ CON TRỎ	Mảng một chiều	3
+226	CPP0326	TÍCH HAI SỐ NGUYÊN LỚN	XỬ LÝ XÂU KÝ TỰ	Xử lý số nguyên lớn	3
+227	CPP0328	CHIA HẾT CHO 8	XỬ LÝ XÂU KÝ TỰ	Xử lý số nguyên lớn	3
+228	CPP0336	XÂU CON NHỎ NHẤT - 1	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	3
+229	CPP0337	XÂU CON NHỎ NHẤT - 2	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	3
+230	CPP0374	BIẾN ĐỔI A – B	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	3
+231	CPP0433	SẮP XẾP THEO SỐ LẦN XUẤT HIỆN	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	3
+232	CPP0436	SỐ NHỎ NHẤT LỚN HƠN A[i]	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Sắp xếp	3
+233	CPP0452	PHẦN TỬ CHUNG CỦA BA DÃY SỐ	KỸ THUẬT SẮP XẾP VÀ TÌM KIẾM	Tìm kiếm	3
+234	CPP0531	BỐN ĐIỂM TRÊN MẶT PHẲNG	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	3
+235	CPP0631	QUẢN LÝ BÁN HÀNG – 1	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	3
+236	CPP0632	QUẢN LÝ BÁN HÀNG – 2	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	3
+237	CPP0716	ĐẾM SỐ CÁCH DI CHUYỂN	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	3
+238	CPP0720	DÃY SỐ BITONIC	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	3
+239	CPP0732	TỔNG LỚN NHẤT CỦA DÃY CON TĂNG DẦN	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	3
+240	CPP0761	ƯỚC SỐ CHUNG LỚN NHẤT CỦA SỐ NGUYÊN LỚN	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	3
+241	CPP0806	QUẢN LÝ BÁN HÀNG - 3	LẬP TRÌNH C++ CƠ BẢN	Ứng dụng lớp - đối tượng	3
+242	CPP0140	SỐ HOÀN HẢO	LẬP TRÌNH C++ CƠ BẢN	Ước số và Ước số chung lớn nhất	4
+243	CPP0214	SỐ LỚN NHẤT CỦA DÃY CON LIÊN TỤC	MẢNG VÀ CON TRỎ	Mảng một chiều	4
+244	CPP0233	MA TRẬN XOẮN ỐC - 2	MẢNG VÀ CON TRỎ	Mảng hai chiều	4
+245	CPP0234	MA TRẬN XOẮN ỐC - 3	MẢNG VÀ CON TRỎ	Mảng hai chiều	4
+246	CPP0238	THAY THẾ X - O	MẢNG VÀ CON TRỎ	Mảng hai chiều	4
+247	CPP0239	TÍNH HẠNG CỦA MA TRẬN	MẢNG VÀ CON TRỎ	Mảng hai chiều	4
+248	CPP0263	GIÁ TRỊ LỚN NHẤT CỦA MA TRẬN	MẢNG VÀ CON TRỎ	Mảng hai chiều	4
+249	CPP0329	THƯƠNG HAI SỐ NGUYÊN LỚN	XỬ LÝ XÂU KÝ TỰ	Xử lý số nguyên lớn	4
+250	CPP0330	SỐ ĐỐI XỨNG LỚN NHẤT	XỬ LÝ XÂU KÝ TỰ	Xử lý số nguyên lớn	4
+251	CPP0331	SUM STRING	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	4
+252	CPP0340	ĐẾM CÁC SỐ CHIA HẾT CHO N	XỬ LÝ XÂU KÝ TỰ	Xử lý số nguyên lớn	4
+253	CPP0361	MẬT KHẨU	XỬ LÝ XÂU KÝ TỰ	Kiểu dữ liệu string và áp dụng	4
+254	CPP0532	DIỆN TÍCH ĐA GIÁC	CẤU TRÚC VÀ MẢNG CẤU TRÚC	Ứng dụng cấu trúc	4
+255	CPP0724	HÌNH CHỮ NHẬT CON CÓ TỔNG LỚN NHẤT	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	4
+256	CPP0731	SỐ BƯỚC DỊCH CHUYỂN ÍT NHẤT	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	4
+257	CPP0733	TÌM ĐƯỜNG TRONG MA TRẬN NHỊ PHÂN	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	4
+258	CPP0734	HÌNH CHỮ NHẬT LỚN NHẤT - 2	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	4
+259	CPP0735	MA TRẬN CON LỚN NHẤT	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	4
+260	CPP0736	DÃY CON LIÊN TỤC NHỎ NHẤT	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	4
+261	CPP0742	ĐỔI CHỖ ÍT NHẤT	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	4
+262	CPP0744	BẢNG MÀU R - G - B	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	4
+263	CPP0751	SO SÁNH LŨY THỪA	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	4
+264	CPP0729	BỘI SỐ CHUNG NHỎ NHẤT CỦA TẬP CON	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	5
+265	JP012	LIỆT KÊ SỐ FIBONACCI	LẬP TRÌNH C++ CƠ BẢN		1
+266	TEST_2022_N13_off1	Bài class BigNumber (offline)	LỚP VÀ ĐỐI TƯỢNG	Ứng dụng lớp - đối tượng	1
+267	NNLTC_001	THỐNG KÊ PHẦN TỬ	MẢNG VÀ CON TRỎ	Mảng một chiều	2
+268	OLP017	PHÂN TÍCH THỪA SỐ NGUYÊN TỐ - ver 2	CÁC BÀI TOÁN NÂNG CAO	Số học	2
+269	OLP184	PTIT 2024D - ĐƯỜNG TRÒN	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	3
+270	OLP204	PHÂN TÍCH SỐ 123	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	3
+271	OLP209	PHÂN TÍCH SỐ 123 - Bản dễ	CÁC BÀI TOÁN NÂNG CAO	Ứng dụng thuật toán	3

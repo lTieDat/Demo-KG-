@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 lib64/
 parts/
 sdist/
@@ -168,3 +168,18 @@ inspect_*.py
 # Documentation files (optional - remove if you want to track them)
 README_*.md
 REFACTORING_*.md
+
+# Project specific temporary files
+check_api.py
+check_links.py
+test_api.py
+*.backup
+result.txt
+kg_*.html
+spinner_fix.css
+
+# User requested ignores
+node_modules/
+.turbo/
+lib/
+

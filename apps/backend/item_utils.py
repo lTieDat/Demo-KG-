@@ -15,6 +15,7 @@ def load_item_details():
     
     # Các đường dẫn có thể chứa file
     possible_paths = [
+        base_dir / "../../dataset" / "code-ptit-100k.item",  # From apps/backend to root/dataset
         base_dir / "dataset" / "code-ptit-100k.item",
         Path.cwd() / "dataset" / "code-ptit-100k.item",
         base_dir.parent / "Web" / "dataset" / "code-ptit-100k.item",
