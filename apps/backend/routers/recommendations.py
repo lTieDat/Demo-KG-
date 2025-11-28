@@ -6,6 +6,7 @@ from utils.recommendations import get_top_k_recommendations
 from item_utils import get_item_display_info
 from llm_explainer import MistralCloudExplainer, OllamaExplainer, LocalLLMExplainer
 import os
+import traceback
 
 router = APIRouter()
 
@@ -23,12 +24,12 @@ class ExplainRequest(BaseModel):
 
 @router.get("/{student_id}")
 async def get_recommendations(student_id: int, top_k: int = 10, manager = Depends(get_model_manager)):
-    config, model, dataset, item_details = manager.get_model_components()
-    
-    if model is None:
-        raise HTTPException(status_code=400, detail="Model not loaded")
-        
     try:
+        config, model, dataset, item_details = manager.get_model_components()
+        
+        if model is None:
+            raise HTTPException(status_code=400, detail="Model not loaded")
+            
         recs = get_top_k_recommendations(model, dataset, student_id, topk=top_k)
         
         formatted_recs = []
@@ -42,8 +43,12 @@ async def get_recommendations(student_id: int, top_k: int = 10, manager = Depend
             })
             
         return {"recommendations": formatted_recs}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"ERROR in get_recommendations: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.post("/explain")
 async def explain_recommendations(request: ExplainRequest):

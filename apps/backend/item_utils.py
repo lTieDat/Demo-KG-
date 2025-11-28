@@ -15,10 +15,10 @@ def load_item_details():
     
     # Các đường dẫn có thể chứa file
     possible_paths = [
-        base_dir / "../../dataset" / "code-ptit-100k.item",  # From apps/backend to root/dataset
-        base_dir / "dataset" / "code-ptit-100k.item",
-        Path.cwd() / "dataset" / "code-ptit-100k.item",
-        base_dir.parent / "Web" / "dataset" / "code-ptit-100k.item",
+        base_dir / "../../dataset" / "cpp.item",  # From apps/backend to root/dataset
+        base_dir / "dataset" / "cpp.item",
+        Path.cwd() / "dataset" / "cpp.item",
+        base_dir.parent / "Web" / "dataset" / "cpp.item",
     ]
 
     item_file = None
@@ -44,27 +44,24 @@ def load_item_details():
         item_details = {}
 
         for _, row in df.iterrows():
-            item_id = row["item_id:token_seq"]
-            title = (
-                row["title:token_seq"] if pd.notna(row["title:token_seq"]) else "N/A"
-            )
-            topic = (
-                row["topic:token_seq"] if pd.notna(row["topic:token_seq"]) else "N/A"
-            )
-            sub_topic = (
-                row["sub_topic:token_seq"]
-                if pd.notna(row["sub_topic:token_seq"])
-                else "N/A"
-            )
-            difficulty = (
-                row["difficulty:token"] if pd.notna(row["difficulty:token"]) else "N/A"
-            )
+            # cpp.item format: item_id, question_id, name, group, type (topic), level
+            item_id = str(row["item_id:token"])
+            question_id = row["question_id:token"] if pd.notna(row["question_id:token"]) else "N/A"
+            name = row["name:token_seq"] if pd.notna(row["name:token_seq"]) else "N/A"
+            group = row["group:token_seq"] if pd.notna(row["group:token_seq"]) else "N/A"
+            topic = row["type:token_seq"] if pd.notna(row["type:token_seq"]) else "N/A"
+            level = row["level:token"] if pd.notna(row["level:token"]) else "N/A"
+
+            # Clean up topic and level display
+            topic_display = topic.replace('T_', '').replace('_', ' ') if topic != "N/A" else "N/A"
+            level_display = level.replace('L_', 'Level ') if level != "N/A" else "N/A"
 
             item_details[item_id] = {
-                "title": title,
-                "topic": topic,
-                "sub_topic": sub_topic,
-                "difficulty": difficulty,
+                "title": name,  # Use name as title
+                "question_id": question_id,
+                "topic": topic_display,
+                "sub_topic": group,  # Use group as sub_topic
+                "difficulty": level_display,
             }
 
         print(f"Loaded {len(item_details)} items from {item_file}")

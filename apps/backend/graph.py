@@ -25,7 +25,7 @@ difficulty_names = {
     "d.00005": "Do kho 5 (Cuc kho)",
 }
 
-with open("dataset/code-ptit-100k-new.link", "r", encoding="utf-8") as f:
+with open("dataset/cpp.link", "r", encoding="utf-8") as f:
     for line in f:
         parts = line.strip().split("\t")
         if len(parts) == 2:
@@ -40,7 +40,7 @@ print(f"Loaded {len(entity_map)} entity mappings")
 
 # Load difficulty mapping
 difficulty_map = {}
-with open("dataset/code-ptit-100k.item", "r", encoding="utf-8") as f:
+with open("dataset/cpp.item", "r", encoding="utf-8") as f:
     next(f)
     for line in f:
         parts = line.strip().split("\t")
@@ -58,7 +58,7 @@ subtopic_edges = []
 
 print("Loading KG triples...")
 
-with open("dataset/code-ptit-100k-updated.kg", "r", encoding="utf-8") as f:
+with open("dataset/cpp.kg", "r", encoding="utf-8") as f:
     next(f)
     for line in f:
         parts = line.strip().split("\t")

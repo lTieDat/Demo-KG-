@@ -9,30 +9,36 @@ DATASET_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "datase
 @router.get("/knowledge-graph")
 async def get_knowledge_graph(limit: int = 10000):
     """
-    Get knowledge graph data from normalized dataset.
+    Get knowledge graph data from dataset.
     Returns nodes and links for visualization.
     
     Args:
         limit: Maximum number of relationships to return (default: 10000)
     """
     try:
-        # Use normalized dataset files
-        kg_file = os.path.join(DATASET_PATH, "cpp.kg.normalized")
-        item_file = os.path.join(DATASET_PATH, "cpp.item.normalized")
+        # Use dataset files (no .normalized extension)
+        kg_file = os.path.join(DATASET_PATH, "cpp.kg")
+        item_file = os.path.join(DATASET_PATH, "cpp.item")
         link_file = os.path.join(DATASET_PATH, "cpp.link")
         
-        # Read item metadata from normalized file
-        # Structure: item_id, type (topic), level
+        # Read item metadata
+        # Format: item_id, question_id, name, group, type (topic), level
         items_metadata = {}
         with open(item_file, 'r', encoding='utf-8') as f:
             next(f)  # Skip header
             for line in f:
                 parts = line.strip().split('\t')
-                if len(parts) >= 3:
+                if len(parts) >= 6:
                     item_id = parts[0]
-                    topic = parts[1]  # This is the topic name
-                    level = parts[2]
+                    question_id = parts[1]
+                    name = parts[2]
+                    group = parts[3]
+                    topic = parts[4]  # This is the topic (type column)
+                    level = parts[5]
                     items_metadata[item_id] = {
+                        "question_id": question_id,
+                        "name": name,
+                        "group": group,
                         "topic": topic,
                         "level": level
                     }
@@ -79,7 +85,7 @@ async def get_knowledge_graph(limit: int = 10000):
                 nodes_set.add(head_id)
                 nodes_set.add(tail_id)
                 
-                # Extract topic name (normalized: single underscores)
+                # Extract topic name (remove T_ prefix and replace underscores with spaces)
                 topic_name = tail_id.replace('T_', '').replace('_', ' ')
                 entity_info[tail_id] = {'type': 'topic', 'name': topic_name}
                 
@@ -116,8 +122,8 @@ async def get_knowledge_graph(limit: int = 10000):
                     
                     processed_pairs.add(pair_key)
             
-            # Skip level_of (it's the reverse of has_level, already handled)
-            elif relation == 'level_of':
+            # Skip level_of and topic_of (reverse relationships, already handled)
+            elif relation in ['level_of', 'topic_of']:
                 continue
             
             # Process similar_to relationships
@@ -154,14 +160,16 @@ async def get_knowledge_graph(limit: int = 10000):
                         
                         nodes.append({
                             "id": node_id,
-                            "label": f"{node_id}",
+                            "label": metadata["question_id"],
                             "type": "item",
                             "item_id": item_id,
                             "metadata": {
+                                "question_id": metadata["question_id"],
+                                "name": metadata["name"],
                                 "topic": topic_display,
                                 "level": level_display
                             },
-                            "name": f"{node_id} ({topic_display[:30]}...)" if len(topic_display) > 30 else f"{node_id} ({topic_display})"
+                            "name": f"{metadata['question_id']}: {metadata['name'][:40]}..." if len(metadata['name']) > 40 else f"{metadata['question_id']}: {metadata['name']}"
                         })
                     else:
                         nodes.append({

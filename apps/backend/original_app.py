@@ -123,7 +123,7 @@ if compatible_models:
                 st.write("---")
 else:
     st.sidebar.error("Không có model nào tương thích với dataset hiện tại!")
-    st.sidebar.write("Dataset yêu cầu: code-ptit-100k, embedding_size=64")
+    st.sidebar.write("Dataset yêu cầu: cpp, embedding_size=64")
 
     # Hiển thị danh sách tất cả model để debug
     all_models = [f for f in os.listdir(MODEL_DIR) if f.endswith(".pth")]
@@ -132,7 +132,7 @@ else:
             for model_file in all_models:
                 model_path = os.path.join(MODEL_DIR, model_file)
                 from utils.models import check_checkpoint_compatibility
-                info = check_checkpoint_compatibility(model_path, "code-ptit-100k")
+                info = check_checkpoint_compatibility(model_path, "cpp")
                 st.write(f"**{model_file}**")
                 if "compatibility_issues" in info:
                     for issue in info["compatibility_issues"]:

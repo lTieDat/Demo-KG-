@@ -20,7 +20,7 @@ class ModelService:
         self.recbole_dir = recbole_dir
 
     def check_checkpoint_compatibility(
-        self, checkpoint_path, target_dataset="code-ptit-100k"
+        self, checkpoint_path, target_dataset="cpp"
     ):
         """Kiểm tra thông tin cơ bản của checkpoint và compatibility với dataset hiện tại"""
         try:
@@ -92,7 +92,7 @@ class ModelService:
                 "compatibility_issues": [f"Error loading: {str(e)}"],
             }
 
-    def get_compatible_checkpoints(self, target_dataset="code-ptit-100k"):
+    def get_compatible_checkpoints(self, target_dataset="cpp"):
         """Lấy danh sách các checkpoint tương thích với dataset hiện tại"""
         all_models = [
             f for f in os.listdir(self.recbole_dir) if f.endswith(".pth")
