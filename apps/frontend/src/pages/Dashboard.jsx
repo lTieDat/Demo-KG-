@@ -7,12 +7,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Sparkles, User, BookOpen, TrendingUp, ArrowLeft, Search } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import RecommendationCard from '../components/RecommendationCard';
 
 export default function Dashboard() {
     const [query, setQuery] = useState("");
     const [students, setStudents] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [recommendations, setRecommendations] = useState([]);
+    const [kgAvailable, setKgAvailable] = useState(false);
     const [explanation, setExplanation] = useState("");
     const [loading, setLoading] = useState(false);
     const [explaining, setExplaining] = useState(false);
@@ -51,11 +53,13 @@ export default function Dashboard() {
 
         try {
             setLoading(true);
-            const response = await api.get(`/recommendations/${student.id}`);
+            // Use explained endpoint to get recommendations with KG context
+            const response = await api.get(`/recommendations/${student.id}/explained?top_k=10`);
             setRecommendations(response.data.recommendations);
+            setKgAvailable(response.data.kg_available);
             toast({
                 title: "✓ Recommendations loaded",
-                description: `Found ${response.data.recommendations.length} exercises for ${student.code}`,
+                description: `Found ${response.data.recommendations.length} exercises for ${student.code}${response.data.kg_available ? ' with KG explanations' : ''}`,
                 className: "bg-green-50 border-green-200 text-green-900",
             });
         } catch (error) {
@@ -77,7 +81,7 @@ export default function Dashboard() {
             const response = await api.post('/recommendations/explain', {
                 student_code: selectedStudent.code,
                 recommendations: recommendations,
-                service: "mistral"
+                service: "kg"
             });
             setExplanation(response.data.explanation);
             toast({
@@ -273,41 +277,12 @@ export default function Dashboard() {
                                 </div>
                                 <div className="grid gap-4">
                                     {recommendations.map((rec, index) => (
-                                        <Card
+                                        <RecommendationCard
                                             key={rec.internal_id}
-                                            className="group hover:shadow-xl transition-all duration-300 border-2 border-slate-200 hover:border-blue-400 bg-white"
-                                        >
-                                            <CardContent className="p-6">
-                                                <div className="flex items-start justify-between mb-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold shadow-lg">
-                                                            {index + 1}
-                                                        </div>
-                                                        <div>
-                                                            <h3 className="font-bold text-lg text-slate-800 group-hover:text-blue-600 transition-colors">
-                                                                {rec.info.title}
-                                                            </h3>
-                                                            <p className="text-sm text-slate-500">ID: {rec.external_id}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 text-sm">
-                                                        <TrendingUp className="h-4 w-4 text-green-600" />
-                                                        <span className="font-semibold text-green-600">
-                                                            {(rec.score * 100).toFixed(1)}%
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex flex-wrap gap-2">
-                                                    <span className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-                                                        {rec.info.topic}
-                                                    </span>
-                                                    <span className={`px-3 py-1 text-sm rounded-full border ${getDifficultyColor(rec.info.difficulty)}`}>
-                                                        {rec.info.difficulty}
-                                                    </span>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
+                                            recommendation={rec}
+                                            index={index}
+                                            getDifficultyColor={getDifficultyColor}
+                                        />
                                     ))}
                                 </div>
                             </div>

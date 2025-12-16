@@ -1,8 +1,17 @@
 """
-Recommendation generation utilities
+Recommendation generation utilities with KG explanations
 """
 import torch
 from recbole.data.interaction import Interaction
+from typing import List, Tuple, Dict, Optional
+
+# Import KG explainer components
+try:
+    from kg_explainer import KGExplainer
+    from attention_extractor import FastAttentionExtractor
+    KG_AVAILABLE = True
+except ImportError:
+    KG_AVAILABLE = False
 
 
 def get_top_k_recommendations(model, dataset, user_id, topk=10):
@@ -62,3 +71,87 @@ def get_top_k_recommendations(model, dataset, user_id, topk=10):
 
     except Exception as e:
         raise Exception(f"Lỗi trong get_top_k_recommendations: {str(e)}")
+
+
+def get_recommendations_with_explanations(
+    model,
+    dataset,
+    user_id: int,
+    topk: int = 10,
+    user_history: Optional[List[str]] = None,
+    extract_attention: bool = False,
+    item_details: Dict = None
+) -> Tuple[List[Tuple], Dict]:
+    """
+    Lấy recommendations kèm theo KG explanations
+    
+    Args:
+        model: KGIN model
+        dataset: RecBole dataset
+        user_id: User ID
+        topk: Number of recommendations
+        user_history: List of item IDs user has completed
+        extract_attention: Whether to extract attention weights (slower)
+    
+    Returns:
+        Tuple of (recommendations, explanation_data)
+        - recommendations: List of (item_internal_id, item_external_id, score)
+        - explanation_data: Dict with KG context and optional attention info
+    """
+    # Get basic recommendations
+    recommendations = get_top_k_recommendations(model, dataset, user_id, topk)
+    
+    explanation_data = {
+        'kg_available': False,
+        'item_explanations': {},
+        'attention_info': None
+    }
+    
+    if not KG_AVAILABLE:
+        print("KG modules not available")
+        return recommendations, explanation_data
+    
+    try:
+        # Initialize KG explainer
+        kg_explainer = KGExplainer()
+        explanation_data['kg_available'] = True
+    
+        # Extract KG explanations for each recommended item
+        for item_internal_id, item_external_id, score in recommendations:
+            try:
+                kg_explanation = kg_explainer.explain_item(
+                    item_external_id,
+                    user_history=user_history
+                )
+                
+                # Format for LLM
+                kg_context = kg_explainer.format_kg_context_for_llm(kg_explanation, item_details=item_details)
+                
+                explanation_data['item_explanations'][item_external_id] = {
+                    'kg_explanation': kg_explanation,
+                    'kg_context_text': kg_context,
+                    'score': score
+                }
+            except Exception as e:
+                print(f"Warning: Could not get KG explanation for {item_external_id}: {e}")
+                continue
+    
+        # Optionally extract attention weights
+        if extract_attention:
+            try:
+                attention_extractor = FastAttentionExtractor(model, dataset)
+                attention_info = attention_extractor.extract_attention_for_user(
+                    user_id,
+                    enable_hooks=extract_attention
+                )
+                explanation_data['attention_info'] = attention_info
+            except Exception as e:
+                print(f"Warning: Could not extract attention weights: {e}")
+    
+    except Exception as e:
+        print(f"Error initializing KG explainer: {e}")
+        import traceback
+        traceback.print_exc()
+        explanation_data['kg_available'] = False
+    
+    return recommendations, explanation_data

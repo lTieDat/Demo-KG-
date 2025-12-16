@@ -2,6 +2,15 @@ import openai
 import streamlit as st
 from typing import List, Dict, Any, Optional
 
+# Import KG explainer components
+try:
+    from kg_explainer import KGExplainer
+    from attention_extractor import AttentionExtractor, FastAttentionExtractor
+    KG_AVAILABLE = True
+except ImportError:
+    KG_AVAILABLE = False
+    print("Warning: KG explainer modules not available")
+
 
 class LLMExplainer:
     def __init__(self, api_key: str, model: str = "gpt-3.5-turbo"):
@@ -13,6 +22,8 @@ class LLMExplainer:
         student_code: str,
         recommendations: List[Dict],
         user_history: Optional[List[str]] = None,
+        kg_context: Optional[str] = None,
+        attention_context: Optional[str] = None,
     ) -> str:
         """
         Giải thích kết quả gợi ý bằng LLM
@@ -27,6 +38,13 @@ class LLMExplainer:
         """
         # Tạo prompt context
         context = self._build_context(student_code, recommendations, user_history)
+        
+        # Add KG and attention context if available
+        if kg_context:
+            context += f"\n\nThông tin từ Knowledge Graph:\n{kg_context}"
+        
+        if attention_context:
+            context += f"\n\n{attention_context}"
 
         prompt = f"""
         Bạn là một trợ lý giáo dục thông minh chuyên về lập trình. Hãy giải thích tại sao hệ thống gợi ý những bài tập này cho sinh viên.
@@ -71,14 +89,29 @@ class LLMExplainer:
         return context
 
     def explain_single_recommendation(
-        self, student_code: str, item_info: Dict, rank: int, score: float
+        self, 
+        student_code: str, 
+        item_info: Dict, 
+        rank: int, 
+        score: float,
+        kg_context: Optional[str] = None,
+        attention_context: Optional[str] = None
     ) -> str:
         """
         Giải thích một bài tập cụ thể tại sao được gợi ý
         """
+        base_info = f"Bài tập \"{item_info['title']}\" (chủ đề: {item_info['topic']}, độ khó: {item_info['difficulty']})"
+        
+        extra_context = ""
+        if kg_context:
+            extra_context += f"\n\nThông tin từ Knowledge Graph:\n{kg_context}"
+        if attention_context:
+            extra_context += f"\n\n{attention_context}"
+        
         prompt = f"""
-        Giải thích tại sao bài tập "{item_info['title']}" (chủ đề: {item_info['topic']}, độ khó: {item_info['difficulty']}) 
+        Giải thích tại sao {base_info}
         được gợi ý ở vị trí số {rank} cho sinh viên {student_code} với điểm số {score:.3f}.
+        {extra_context}
 
         Viết 1-2 câu ngắn gọn bằng tiếng Việt, tập trung vào lợi ích học tập.
         """
@@ -116,10 +149,21 @@ class MistralCloudExplainer:
             raise ImportError("Cần cài đặt mistralai: pip install mistralai")
 
     def explain_recommendations(
-        self, student_code: str, recommendations: List[Dict]
+        self, 
+        student_code: str, 
+        recommendations: List[Dict],
+        kg_context: Optional[str] = None,
+        attention_context: Optional[str] = None
     ) -> str:
         """Giải thích sử dụng Mistral AI từ cloud"""
         context = self._build_context(student_code, recommendations)
+        
+        # Add KG context if available
+        if kg_context:
+            context += f"\n\nThông tin từ Knowledge Graph:\n{kg_context}"
+        
+        if attention_context:
+            context += f"\n\n{attention_context}"
 
         prompt = f"""Bạn là giáo viên lập trình có kinh nghiệm. Hãy phân tích danh sách gợi ý bài tập sau và giải thích tại sao chúng phù hợp:
 
@@ -188,10 +232,21 @@ class OllamaExplainer:
             raise ImportError("Cần cài đặt requests: pip install requests")
 
     def explain_recommendations(
-        self, student_code: str, recommendations: List[Dict]
+        self, 
+        student_code: str, 
+        recommendations: List[Dict],
+        kg_context: Optional[str] = None,
+        attention_context: Optional[str] = None
     ) -> str:
         """Giải thích sử dụng Ollama"""
         context = self._build_context(student_code, recommendations)
+        
+        # Add KG context if available
+        if kg_context:
+            context += f"\n\nThông tin từ Knowledge Graph:\n{kg_context}"
+        
+        if attention_context:
+            context += f"\n\n{attention_context}"
 
         prompt = f"""Bạn là giáo viên lập trình có kinh nghiệm. Hãy phân tích danh sách gợi ý bài tập sau và giải thích tại sao chúng phù hợp:
 
@@ -203,7 +258,7 @@ Hãy viết một phân tích chi tiết bao gồm:
 - Chủ đề chính của các bài tập được gợi ý
 - Mức độ khó và sự phân bố
 
-**2. Lý do gợi ý:**
+**2. Lý do gợi ý:****
 - Tại sao những bài tập này phù hợp với sinh viên
 - Sự liên kết giữa các chủ đề
 
@@ -255,7 +310,11 @@ class LocalLLMExplainer:
         pass
 
     def explain_recommendations(
-        self, student_code: str, recommendations: List[Dict]
+        self, 
+        student_code: str, 
+        recommendations: List[Dict],
+        kg_context: Optional[str] = None,
+        attention_context: Optional[str] = None
     ) -> str:
         """
         Giải thích sử dụng rule-based approach khi không có LLM
@@ -282,5 +341,9 @@ class LocalLLMExplainer:
             explanation += f"ở mức độ {difficulties[0]} phù hợp với trình độ hiện tại. "
 
         explanation += f"Các bài tập được sắp xếp theo mức độ phù hợp giảm dần từ {recommendations[0]['score']:.3f} đến {recommendations[-1]['score']:.3f}."
+        
+        # Add KG context if available
+        if kg_context:
+            explanation += f"\n\nThông tin từ Knowledge Graph:\n{kg_context}"
 
         return explanation
