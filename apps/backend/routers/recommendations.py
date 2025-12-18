@@ -149,6 +149,7 @@ async def get_explained_recommendations(
             if explanation_data['kg_available'] and item_external_id in explanation_data['item_explanations']:
                 kg_exp_data = explanation_data['item_explanations'][item_external_id]
                 kg_explanation = {
+                    'head_id': kg_exp_data['kg_explanation']['item_id'],
                     'metadata': kg_exp_data['kg_explanation']['metadata'],
                     'shared_entities': kg_exp_data['kg_explanation']['shared_entities'],
                     'paths_from_history': kg_exp_data['kg_explanation']['paths_from_history'],
@@ -193,6 +194,7 @@ async def explain_recommendations(request: ExplainRequest):
         for rec in request.recommendations:
             info = rec.get("info", {})
             rec_data.append({
+                "id": rec.get("external_id", ""),  # Pass ID
                 "title": info.get("title", "Unknown"),
                 "topic": info.get("topic", "Unknown"),
                 "difficulty": info.get("difficulty", "Unknown"),

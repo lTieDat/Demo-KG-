@@ -386,8 +386,10 @@ class KGExplainer:
         lines.append(f"- Độ khó: {level}")
         
         # Shared entities with history
+        lines.append("\n🔗 **Lý do gợi ý**:")
+        
+        has_shared_topic = False
         if explanation['shared_entities']:
-            lines.append("\n🔗 **Lý do gợi ý (Dựa trên lịch sử học tập)**:")
             for shared_info in explanation['shared_entities'][:3]:
                 from_item = shared_info['from_item']
                 from_item_name = get_name(from_item)
@@ -395,6 +397,7 @@ class KGExplainer:
                 
                 reasons = []
                 if shared['topics']:
+                    has_shared_topic = True
                     topic_clean = shared['topics'][0].replace('T_', '').replace('_', ' ')
                     reasons.append(f"cùng chủ đề **{topic_clean}**")
                 
@@ -404,7 +407,12 @@ class KGExplainer:
                 
                 if reasons:
                     reason_str = " và ".join(reasons)
-                    lines.append(f"  • Bạn đã hoàn thành bài **{from_item_name}**, bài này cũng {reason_str}.")
+                    lines.append(f"- Bạn đã hoàn thành bài **{from_item_name}**, bài này cũng {reason_str}.")
+        
+        # If no shared topic found, explicitly mention the item's topic as a reason
+        if not has_shared_topic and metadata['topic']:
+             t_clean = metadata['topic'].replace('T_', '').replace('_', ' ')
+             lines.append(f"- Bài này giúp bạn rèn luyện và củng cố kiến thức về chủ đề **{t_clean}**.")
         
         # Paths (only show if found and limit to 2)
         if explanation['paths_from_history']:
@@ -425,11 +433,11 @@ class KGExplainer:
                      mid_text = middle.replace('T_', '').replace('L_', '').replace('_', ' ')
                      
                      if 'topic' in relation1:
-                         lines.append(f"  • **{head}** và **{tail}** đều thuộc chủ đề **{mid_text}**.")
+                         lines.append(f"- **{head}** và **{tail}** đều thuộc chủ đề **{mid_text}**.")
                      elif 'level' in relation1:
-                         lines.append(f"  • **{head}** và **{tail}** đều ở mức độ khó **{mid_text}**.")
+                         lines.append(f"- **{head}** và **{tail}** đều ở mức độ khó **{mid_text}**.")
                      else:
-                         lines.append(f"  • Có mối liên hệ giữa **{head}** và **{tail}** qua **{mid_text}**.")
+                         lines.append(f"- Có mối liên hệ giữa **{head}** và **{tail}** qua **{mid_text}**.")
                 else:
                     # Fallback for longer paths
                     raw_path = path_info['path_string']
@@ -444,7 +452,27 @@ class KGExplainer:
                     pretty_path = pretty_path.replace('T_', '').replace('_', ' ').replace('L_', 'Level ')
                     pretty_path = pretty_path.replace('has topic', 'thuộc chủ đề').replace('topic of', 'là chủ đề của')
                     pretty_path = pretty_path.replace('has level', 'có độ khó').replace('level of', 'là độ khó của')
-                    lines.append(f"  • {pretty_path}")
+                    pretty_path = pretty_path.replace('has topic', 'thuộc chủ đề').replace('topic of', 'là chủ đề của')
+                    pretty_path = pretty_path.replace('has level', 'có độ khó').replace('level of', 'là độ khó của')
+                    lines.append(f"- {pretty_path}")
+        
+        # Explicitly add Item -> Topic path if exists and not already covered
+        if metadata['topic']:
+            t_clean = metadata['topic'].replace('T_', '').replace('_', ' ')
+            # Check if this simple path is already covered
+            is_covered = False
+            for path_info in explanation['paths_from_history']:
+                # Simplistic check if topic is in path string
+                if t_clean in path_info['path_string'].replace('_', ' '):
+                    is_covered = True
+                    break
+            
+            if not is_covered:
+                # Add the direct path if not present sections
+                if not explanation['paths_from_history']:
+                     lines.append("\n🕸️ **Phân tích chi tiết từ Knowledge Graph**:")
+                
+                lines.append(f"- **{item_name}** → thuộc chủ đề → **{t_clean}**")
         
         if not explanation['shared_entities'] and not explanation['paths_from_history']:
              lines.append("\n(Bài tập này phù hợp với năng lực hiện tại của bạn dựa trên phân tích tổng quát)")
