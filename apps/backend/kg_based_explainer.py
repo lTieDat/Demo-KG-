@@ -78,7 +78,8 @@ class KGBasedExplainer:
         self,
         student_code: str,
         recommendations: List[Dict],
-        kg_contexts: List[Dict] = None
+        kg_contexts: List[Dict] = None,
+        user_history: List[str] = None
     ) -> str:
         """
         Generate comprehensive explanation from KG analysis
@@ -87,17 +88,27 @@ class KGBasedExplainer:
             student_code: Student ID
             recommendations: List of recommended items with metadata
             kg_contexts: List of KG explanation data for each item
+            user_history: List of item IDs the user has completed
         
         Returns:
             Detailed markdown explanation
         """
-        # If no KG context passed, we can still use our loaded KG data
-        # But we need the entity IDs from the recommendations
+        # Try to use enhanced explainer for KGAT/KGIN analysis
+        try:
+            from enhanced_kg_explainer import EnhancedKGExplainer
+            enhanced = EnhancedKGExplainer()
+            return enhanced.explain_recommendations(
+                student_code=student_code,
+                recommendations=recommendations,
+                user_history=user_history
+            )
+        except ImportError:
+            pass  # Fall back to basic analysis
+        except Exception as e:
+            print(f"Enhanced explainer error, falling back: {e}")
         
-        # Analyze KG patterns
+        # Legacy analysis path
         analysis = self._analyze_kg_patterns(recommendations, kg_contexts)
-        
-        # Build explanation sections
         explanation = self._build_explanation(student_code, recommendations, analysis)
         
         return explanation

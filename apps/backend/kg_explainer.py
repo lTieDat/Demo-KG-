@@ -336,7 +336,7 @@ class KGExplainer:
     
     def format_kg_context_for_llm(self, explanation: Dict, item_details: Dict = None) -> str:
         """
-        Format KG explanation into natural language text
+        Format KG explanation into natural language text with KGAT/KGIN analysis
         
         Args:
             explanation: Output from explain_item()
@@ -347,22 +347,47 @@ class KGExplainer:
         """
         lines = []
         
-        # Helper to get name
+        # Try using enhanced explainer for richer context
+        try:
+            from enhanced_kg_explainer import EnhancedKGExplainer
+            enhanced = EnhancedKGExplainer()
+            
+            item_id = explanation.get('item_id', '')
+            user_history = []
+            
+            # Extract user history from shared_entities
+            for shared in explanation.get('shared_entities', []):
+                hist_item = shared.get('from_item')
+                if hist_item and hist_item not in user_history:
+                    user_history.append(hist_item)
+            
+            # Get enhanced explanation
+            enhanced_exp = enhanced.explain_single_recommendation(
+                item_id=item_id,
+                user_history=user_history,
+                score=explanation.get('score', 0)
+            )
+            
+            return enhanced.format_explanation_text(enhanced_exp)
+            
+        except ImportError:
+            pass  # Fall back to basic formatting
+        except Exception as e:
+            print(f"Enhanced format error, using fallback: {e}")
+        
+        # Legacy formatting path
         def get_name(iid):
             if not item_details:
                 return iid
             
-            # Try exact match
             if iid in item_details:
                 return item_details[iid].get('title', iid)
             
-            # Try using KG mapping to get original Item ID
             if hasattr(self.kg_graph, 'entity_to_item') and iid in self.kg_graph.entity_to_item:
                   numeric_id = self.kg_graph.entity_to_item[iid]
                   if numeric_id in item_details:
                        return item_details[numeric_id].get('title', iid)
 
-            # Fallback: Try removing 'E' prefix if present
             if iid.startswith('E'):
                 numeric_id = iid[1:]
                 if numeric_id in item_details:
@@ -382,11 +407,11 @@ class KGExplainer:
         if metadata['level']:
             level = metadata['level'].replace('L_', 'Level ')
             
-        lines.append(f"- Chủ đề: {topic}")
-        lines.append(f"- Độ khó: {level}")
+        lines.append(f"- **Chủ đề**: {topic}")
+        lines.append(f"- **Độ khó**: {level}")
         
         # Shared entities with history
-        lines.append("\n🔗 **Lý do gợi ý**:")
+        lines.append("\n🔗 **Lý do gợi ý (KG Paths)**:")
         
         has_shared_topic = False
         if explanation['shared_entities']:
@@ -409,12 +434,11 @@ class KGExplainer:
                     reason_str = " và ".join(reasons)
                     lines.append(f"- Bạn đã hoàn thành bài **{from_item_name}**, bài này cũng {reason_str}.")
         
-        # If no shared topic found, explicitly mention the item's topic as a reason
         if not has_shared_topic and metadata['topic']:
              t_clean = metadata['topic'].replace('T_', '').replace('_', ' ')
              lines.append(f"- Bài này giúp bạn rèn luyện và củng cố kiến thức về chủ đề **{t_clean}**.")
         
-        # Paths (only show if found and limit to 2)
+        # Paths
         if explanation['paths_from_history']:
             lines.append("\n🕸️ **Phân tích chi tiết từ Knowledge Graph**:")
             for path_info in explanation['paths_from_history'][:2]:

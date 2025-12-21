@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronDown, ChevronUp, TrendingUp, Info } from "lucide-react";
+import { ChevronDown, ChevronUp, TrendingUp, Info, Sparkles, GitBranch, Target } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -9,6 +9,13 @@ export default function RecommendationCard({ recommendation, index, getDifficult
     const { external_id, score, info, kg_explanation } = recommendation;
 
     const hasKgExplanation = kg_explanation && kg_explanation.kg_context_text;
+
+    // Check if explanation contains KGAT/KGIN analysis markers
+    const hasEnhancedAnalysis = hasKgExplanation && (
+        kg_explanation.kg_context_text.includes('KGAT') || 
+        kg_explanation.kg_context_text.includes('KGIN') ||
+        kg_explanation.kg_context_text.includes('trọng số')
+    );
 
     return (
         <Card
@@ -28,6 +35,11 @@ export default function RecommendationCard({ recommendation, index, getDifficult
                             <p className="text-sm text-slate-500">ID: {external_id}</p>
                         </div>
                     </div>
+                    {/* Score indicator */}
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-700 text-xs font-medium">
+                        <TrendingUp className="h-3 w-3" />
+                        {(score * 100).toFixed(1)}%
+                    </div>
                 </div>
 
                 {/* Tags */}
@@ -38,6 +50,12 @@ export default function RecommendationCard({ recommendation, index, getDifficult
                     <span className={`px-3 py-1 text-sm rounded-full border ${getDifficultyColor(info.difficulty)}`}>
                         {info.difficulty}
                     </span>
+                    {hasEnhancedAnalysis && (
+                        <span className="px-3 py-1 text-xs rounded-full bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            KGAT/KGIN
+                        </span>
+                    )}
                 </div>
 
                 {/* KG Explanation Section */}
@@ -48,7 +66,7 @@ export default function RecommendationCard({ recommendation, index, getDifficult
                             className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors w-full"
                         >
                             <Info className="h-4 w-4" />
-                            <span>Tại sao gợi ý bài này? (KG)</span>
+                            <span>Tại sao gợi ý bài này? (KG Analysis)</span>
                             {showKgDetails ? (
                                 <ChevronUp className="h-4 w-4 ml-auto" />
                             ) : (
@@ -57,48 +75,64 @@ export default function RecommendationCard({ recommendation, index, getDifficult
                         </button>
 
                         {showKgDetails && (
-                            <div className="mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="mt-3 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                                {/* Main explanation text */}
                                 <div className="text-sm text-slate-700">
                                     <ReactMarkdown
                                         remarkPlugins={[remarkGfm]}
                                         components={{
+                                            h1: ({ node, ...props }) => <h1 className="text-lg font-bold text-blue-900 mb-2" {...props} />,
+                                            h2: ({ node, ...props }) => <h2 className="text-md font-semibold text-blue-800 mt-3 mb-2" {...props} />,
                                             ul: ({ node, ...props }) => <ul className="list-disc pl-5 my-2 space-y-1" {...props} />,
                                             li: ({ node, ...props }) => <li className="pl-1" {...props} />,
                                             strong: ({ node, ...props }) => <span className="font-semibold text-blue-800" {...props} />,
-                                            p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />
+                                            p: ({ node, ...props }) => <p className="mb-2 last:mb-0 leading-relaxed" {...props} />,
+                                            em: ({ node, ...props }) => <em className="text-slate-600 not-italic" {...props} />,
+                                            code: ({ node, ...props }) => <code className="px-1 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-mono" {...props} />,
                                         }}
                                     >
                                         {kg_explanation.kg_context_text}
                                     </ReactMarkdown>
                                 </div>
 
-                                {/* Show paths if available */}
+                                {/* KG Paths visualization */}
                                 {kg_explanation.paths_from_history && kg_explanation.paths_from_history.length > 0 && (
-                                    <div className="mt-3 pt-3 border-t border-blue-300">
-                                        <p className="text-xs font-semibold text-blue-800 mb-2">Knowledge Graph Paths:</p>
-                                        {kg_explanation.paths_from_history.slice(0, 3).map((pathInfo, idx) => (
-                                            <div key={idx} className="text-xs text-slate-600 mb-1 font-mono bg-white p-2 rounded border border-blue-200">
-                                                {pathInfo.path_string}
-                                            </div>
-                                        ))}
+                                    <div className="mt-4 pt-4 border-t border-blue-200">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <GitBranch className="h-4 w-4 text-blue-700" />
+                                            <p className="text-xs font-semibold text-blue-800">Knowledge Graph Paths:</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {kg_explanation.paths_from_history.slice(0, 3).map((pathInfo, idx) => (
+                                                <div key={idx} className="text-xs text-slate-600 font-mono bg-white p-2 rounded border border-blue-200 overflow-x-auto">
+                                                    {pathInfo.path_string}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
 
-                                {/* Show shared entities if available */}
+                                {/* Shared entities / Connections */}
                                 {kg_explanation.shared_entities && kg_explanation.shared_entities.length > 0 && (
-                                    <div className="mt-2">
-                                        <p className="text-xs font-semibold text-blue-800 mb-1">Connections:</p>
-                                        {kg_explanation.shared_entities.slice(0, 3).map((entity, idx) => (
-                                            <div key={idx} className="text-xs text-slate-600">
-                                                • Related to {entity.from_item}
-                                                {entity.shared.topics && entity.shared.topics.length > 0 && (
-                                                    <span> (same topic)</span>
-                                                )}
-                                                {entity.shared.levels && entity.shared.levels.length > 0 && (
-                                                    <span> (same level)</span>
-                                                )}
-                                            </div>
-                                        ))}
+                                    <div className="mt-3 pt-3 border-t border-blue-200">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Target className="h-4 w-4 text-blue-700" />
+                                            <p className="text-xs font-semibold text-blue-800">Kết nối với lịch sử:</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            {kg_explanation.shared_entities.slice(0, 3).map((entity, idx) => (
+                                                <div key={idx} className="text-xs text-slate-600 flex items-center gap-2">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                                                    <span>Liên quan đến <strong>{entity.from_item}</strong></span>
+                                                    {entity.shared.topics && entity.shared.topics.length > 0 && (
+                                                        <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">cùng chủ đề</span>
+                                                    )}
+                                                    {entity.shared.levels && entity.shared.levels.length > 0 && (
+                                                        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">cùng level</span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -109,3 +143,4 @@ export default function RecommendationCard({ recommendation, index, getDifficult
         </Card>
     );
 }
+

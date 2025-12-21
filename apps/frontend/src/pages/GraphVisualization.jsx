@@ -167,7 +167,7 @@ export default function GraphVisualization() {
                 <div className="flex justify-between items-center mb-6">
                     <div>
                         <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-                            Knowledge Graph Visualization
+                            EduMatch Knowledge Graph
                         </h1>
                         <p className="text-slate-600 mt-2">Interactive visualization - Use mouse to zoom (scroll) and pan (drag)</p>
                     </div>

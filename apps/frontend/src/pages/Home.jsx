@@ -69,7 +69,7 @@ export default function Home() {
                 {/* Header */}
                 <div className="text-center mb-12">
                     <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 mb-4">
-                        KG Recommender System
+                        EduMatch
                     </h1>
                     <p className="text-slate-600 text-lg mb-6">
                         AI-powered code exercise recommendations using Knowledge Graph Neural Networks

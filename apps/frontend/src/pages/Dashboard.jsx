@@ -116,7 +116,7 @@ export default function Dashboard() {
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-                            Dashboard
+                            EduMatch Dashboard
                         </h1>
                         <p className="text-slate-600 mt-2">Personalized exercise recommendations</p>
                     </div>
