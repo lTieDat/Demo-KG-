@@ -106,18 +106,14 @@ export default function Home() {
                                 {models.compatible.map((model) => (
                                     <div
                                         key={model.filename}
-                                        className="group relative p-6 border-2 border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-lg transition-all duration-300 bg-gradient-to-r from-white to-slate-50"
+                                        className="group relative py-8 px-6 border-2 border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-lg transition-all duration-300 bg-gradient-to-r from-white to-slate-50"
                                     >
                                         <div className="flex items-center justify-between">
                                             <div className="flex-1">
                                                 <h3 className="font-bold text-lg mb-2 text-slate-800 group-hover:text-blue-600 transition-colors">
                                                     {model.filename}
                                                 </h3>
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                                    <div>
-                                                        <span className="text-slate-500">Score:</span>
-                                                        <span className="ml-2 font-semibold text-blue-600">{model.info.score}</span>
-                                                    </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                                                     <div>
                                                         <span className="text-slate-500">Epoch:</span>
                                                         <span className="ml-2 font-semibold">{model.info.epoch}</span>

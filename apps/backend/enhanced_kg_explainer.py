@@ -158,6 +158,39 @@ class EnhancedKGExplainer:
         except Exception as e:
             print(f"Error loading dataset: {e}")
     
+    def _normalize_entity_id(self, item_or_entity: str) -> str:
+        """
+        Normalize item_id or entity_id to entity_id format
+        
+        Args:
+            item_or_entity: Can be '1', 'E1', etc.
+        
+        Returns:
+            Entity ID in 'E<number>' format
+        """
+        if not item_or_entity:
+            return ""
+        
+        # Already in entity format
+        if item_or_entity.startswith('E'):
+            return item_or_entity
+        
+        # Convert item_id to entity_id
+        return f"E{item_or_entity}"
+    
+    def _get_item_name(self, item_or_entity: str) -> str:
+        """
+        Get human-readable name for an item/entity
+        
+        Args:
+            item_or_entity: Can be item_id or entity_id
+        
+        Returns:
+            Human-readable name or the ID if not found
+        """
+        entity_id = self._normalize_entity_id(item_or_entity)
+        return self.entity_to_name.get(entity_id, item_or_entity)
+    
     def analyze_user_intents(self, user_history: List[str]) -> Dict:
         """
         KGIN-style: Model user intents as combinations of KG relations
@@ -300,8 +333,8 @@ class EnhancedKGExplainer:
         if not path:
             return ""
         
-        from_name = self.entity_to_name.get(from_item, from_item)
-        to_name = self.entity_to_name.get(to_item, to_item)
+        from_name = self._get_item_name(from_item)
+        to_name = self._get_item_name(to_item)
         
         # Single hop: direct relation
         if len(path) == 1:
@@ -349,7 +382,7 @@ class EnhancedKGExplainer:
         entity_id = f"E{item_id}" if not item_id.startswith('E') else item_id
         
         # Get item info
-        item_name = self.entity_to_name.get(entity_id, item_id)
+        item_name = self._get_item_name(entity_id)
         item_topics = self.entity_to_topics.get(entity_id, [])
         item_level = self.entity_to_levels.get(entity_id)
         
@@ -375,7 +408,7 @@ class EnhancedKGExplainer:
                 ]
                 connections.append({
                     'from_item': hist_entity,
-                    'from_name': self.entity_to_name.get(hist_entity, hist_entity),
+                    'from_name': self._get_item_name(hist_entity),
                     'connection_type': 'topic',
                     'shared_value': topic,
                     'path': path,
@@ -390,7 +423,7 @@ class EnhancedKGExplainer:
                 ]
                 connections.append({
                     'from_item': hist_entity,
-                    'from_name': self.entity_to_name.get(hist_entity, hist_entity),
+                    'from_name': self._get_item_name(hist_entity),
                     'connection_type': 'level',
                     'shared_value': item_level,
                     'path': path,
@@ -456,7 +489,7 @@ class EnhancedKGExplainer:
     
     def format_explanation_text(self, explanation: Dict) -> str:
         """
-        Format explanation into readable markdown text
+        Format explanation into readable markdown text with KGAT/KGIN analysis
         
         Designed for display in frontend and LLM consumption
         """
@@ -471,26 +504,76 @@ class EnhancedKGExplainer:
         if explanation.get('level_description'):
             lines.append(f"  _{explanation['level_description']}_")
         
-        # Connections (path-based reasoning)
+        # KGIN User Intent Analysis (show first to explain WHY this is recommended)
+        user_intents = explanation.get('user_intents', {})
+        if user_intents and user_intents.get('intents'):
+            lines.append("\n🎯 **Phân tích KGIN (Phù hợp với xu hướng học của bạn):**")
+            
+            primary_intent = user_intents.get('primary_intent')
+            if primary_intent:
+                lines.append(f"- Bạn đang tập trung vào: **{primary_intent['name']}** ({int(primary_intent['strength']*100)}% lịch sử)")
+                
+                # Check if current item matches the intent
+                item_topic = explanation.get('topic')
+                item_level = explanation.get('level')
+                
+                if primary_intent['type'] == 'topic_focus' and item_topic:
+                    if primary_intent['value'] == item_topic:
+                        lines.append(f"  ✓ _Bài này thuộc chủ đề bạn đang học → Củng cố kiến thức hiệu quả_")
+                    else:
+                        topic_name = explanation.get('topic_name', 'chủ đề mới')
+                        lines.append(f"  → _Bài này giới thiệu {topic_name} → Mở rộng kiến thức_")
+                
+                elif primary_intent['type'] == 'level_preference' and item_level:
+                    if primary_intent['value'] == item_level:
+                        lines.append(f"  ✓ _Độ khó phù hợp với trình độ hiện tại của bạn_")
+                    else:
+                        lines.append(f"  → _Độ khó khác biệt → Thử thách mới để tiến bộ_")
+        
+        # KGAT Attention-Weighted Path Analysis
+        relation_importance = explanation.get('relation_importance', [])
+        if relation_importance:
+            lines.append("\n📊 **Phân tích KGAT (Trọng số quan hệ trong Knowledge Graph):**")
+            
+            for rel in relation_importance[:2]:  # Top 2 most important relations
+                importance_pct = int(rel['importance'] * 100)
+                
+                # Explain what this relation means
+                if rel['relation'] == 'has_topic':
+                    lines.append(f"- **Quan hệ chủ đề** (trọng số: {importance_pct}%)")
+                    lines.append(f"  Chủ đề \"{rel['display_name']}\" - {rel['reason']}")
+                elif rel['relation'] == 'has_level':
+                    lines.append(f"- **Quan hệ độ khó** (trọng số: {importance_pct}%)")
+                    lines.append(f"  {rel['display_name']} - {rel['reason']}")
+        
+        # Connection-based reasoning (only show meaningful connections with actual names)
         connections = explanation.get('connections', [])
         if connections:
-            lines.append("\n🔗 **Lý do gợi ý (dựa trên KG paths):**")
-            seen_explanations = set()
-            for conn in connections[:3]:  # Limit to 3
-                exp = conn.get('explanation', '')
-                if exp and exp not in seen_explanations:
-                    lines.append(f"- {exp}")
-                    seen_explanations.add(exp)
-        
-        # KGAT analysis
-        kgat = explanation.get('kgat_analysis', '')
-        if kgat:
-            lines.append(f"\n📊 {kgat}")
-        
-        # KGIN analysis
-        kgin = explanation.get('kgin_analysis', '')
-        if kgin:
-            lines.append(f"\n🎯 {kgin}")
+            lines.append("\n🔗 **Kết nối với bài đã làm:**")
+            
+            # Group connections by type
+            topic_connections = [c for c in connections if c.get('connection_type') == 'topic']
+            level_connections = [c for c in connections if c.get('connection_type') == 'level']
+            
+            # Show topic connections (more important)
+            if topic_connections:
+                for conn in topic_connections[:2]:  # Limit to 2
+                    from_name = conn.get('from_name', 'bài trước')
+                    shared_topic = conn.get('shared_value', '').replace('T_', '').replace('_', ' ')
+                    
+                    lines.append(f"- Liên quan đến **{from_name}**")
+                    lines.append(f"  → Cùng chủ đề: **{shared_topic}**")
+                    lines.append(f"  _Giúp củng cố và mở rộng kiến thức về {shared_topic}_")
+            
+            # Show level connections if no topic connections
+            elif level_connections:
+                for conn in level_connections[:1]:  # Just 1 level connection
+                    from_name = conn.get('from_name', 'bài trước')
+                    shared_level = conn.get('shared_value', '').replace('L_', 'Level ')
+                    
+                    lines.append(f"- Liên quan đến **{from_name}**")
+                    lines.append(f"  → Cùng độ khó: **{shared_level}**")
+                    lines.append(f"  _Duy trì độ khó phù hợp để học hiệu quả_")
         
         return "\n".join(lines)
     

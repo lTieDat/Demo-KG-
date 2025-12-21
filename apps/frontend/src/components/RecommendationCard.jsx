@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronDown, ChevronUp, TrendingUp, Info, Sparkles, GitBranch, Target } from "lucide-react";
+import { ChevronDown, ChevronUp, TrendingUp, Info, Sparkles, GitBranch } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -19,9 +19,9 @@ export default function RecommendationCard({ recommendation, index, getDifficult
 
     return (
         <Card
-            className="group hover:shadow-xl transition-all duration-300 border-2 border-slate-200 hover:border-blue-400 bg-white"
+            className="group hover:shadow-xl transition-all duration-300 border-2 border-slate-200 hover:border-blue-400 bg-white pt-5"
         >
-            <CardContent className="p-6">
+            <CardContent className="py-8 px-6">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -34,11 +34,6 @@ export default function RecommendationCard({ recommendation, index, getDifficult
                             </h3>
                             <p className="text-sm text-slate-500">ID: {external_id}</p>
                         </div>
-                    </div>
-                    {/* Score indicator */}
-                    <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-700 text-xs font-medium">
-                        <TrendingUp className="h-3 w-3" />
-                        {(score * 100).toFixed(1)}%
                     </div>
                 </div>
 
@@ -112,29 +107,7 @@ export default function RecommendationCard({ recommendation, index, getDifficult
                                     </div>
                                 )}
 
-                                {/* Shared entities / Connections */}
-                                {kg_explanation.shared_entities && kg_explanation.shared_entities.length > 0 && (
-                                    <div className="mt-3 pt-3 border-t border-blue-200">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Target className="h-4 w-4 text-blue-700" />
-                                            <p className="text-xs font-semibold text-blue-800">Kết nối với lịch sử:</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            {kg_explanation.shared_entities.slice(0, 3).map((entity, idx) => (
-                                                <div key={idx} className="text-xs text-slate-600 flex items-center gap-2">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                                                    <span>Liên quan đến <strong>{entity.from_item}</strong></span>
-                                                    {entity.shared.topics && entity.shared.topics.length > 0 && (
-                                                        <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">cùng chủ đề</span>
-                                                    )}
-                                                    {entity.shared.levels && entity.shared.levels.length > 0 && (
-                                                        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">cùng level</span>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
+                                {/* Shared entities now integrated into kg_context_text */}
                             </div>
                         )}
                     </div>
