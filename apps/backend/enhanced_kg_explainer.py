@@ -1,12 +1,11 @@
- """
-Enhanced KG Explainer - KGAT/KGIN-specific explanation generation
+"""
+Enhanced KG Explainer - KGAT-specific explanation generation
 
 Provides detailed, technically accurate explanations by:
 1. Analyzing attention-weighted paths (KGAT technique)
-2. Modeling user intents as combinations of KG relations (KGIN technique)
-3. Scoring relation importance for each user
-4. Generating multi-hop reasoning explanations
-5. Integrating with LLM for natural language generation
+2. Scoring relation importance for each user
+3. Generating multi-hop reasoning explanations
+4. Integrating with LLM for natural language generation
 """
 
 import os
@@ -93,7 +92,7 @@ class EnhancedKGExplainer:
         self.kg_triples = []  # (head, relation, tail)
         
         self._load_dataset()
-    
+
     def _load_dataset(self):
         """Load all mappings and KG data"""
         try:
@@ -106,22 +105,19 @@ class EnhancedKGExplainer:
             
             # 1. Load item names
             item_id_to_name = {}
-            item_id_to_topic = {}
-            item_id_to_level = {}
             
             if os.path.exists(item_path):
                 with open(item_path, 'r', encoding='utf-8') as f:
                     reader = csv.reader(f, delimiter='\t')
                     next(reader, None)  # Skip header
                     for row in reader:
-                        if len(row) >= 6:
-                            item_id, question_id, name, group, topic_type, level = row[:6]
+                        if len(row) >= 3:
+                            item_id, _, name = row[:3]
                             item_id_to_name[item_id] = name
-                            item_id_to_topic[item_id] = topic_type
-                            item_id_to_level[item_id] = level
             
             # 2. Load entity-item mapping
             entity_to_item_id = {}
+            item_id_to_entity = {}
             if os.path.exists(link_path):
                 with open(link_path, 'r', encoding='utf-8') as f:
                     reader = csv.reader(f, delimiter='\t')
@@ -130,13 +126,14 @@ class EnhancedKGExplainer:
                         if len(row) >= 2:
                             item_id, entity_id = row[0], row[1]
                             entity_to_item_id[entity_id] = item_id
+                            item_id_to_entity[item_id] = entity_id
             
             # 3. Create entity -> name mapping
             for entity_id, item_id in entity_to_item_id.items():
                 if item_id in item_id_to_name:
                     self.entity_to_name[entity_id] = item_id_to_name[item_id]
             
-            # 4. Load full KG
+            # 4. Load full KG for path finding
             if os.path.exists(kg_path):
                 with open(kg_path, 'r', encoding='utf-8') as f:
                     reader = csv.reader(f, delimiter='\t')
@@ -153,523 +150,211 @@ class EnhancedKGExplainer:
                                 self.entity_to_levels[head] = tail
                                 self.level_to_entities[tail].append(head)
             
-            print(f"Enhanced KG Explainer loaded: {len(self.entity_to_name)} entities, {len(self.kg_triples)} triples")
+            print(f"KG Explainer initialized: {len(self.entity_to_name)} entities, {len(self.kg_triples)} triples")
             
         except Exception as e:
             print(f"Error loading dataset: {e}")
-    
-    def _normalize_entity_id(self, item_or_entity: str) -> str:
-        """
-        Normalize item_id or entity_id to entity_id format
-        
-        Args:
-            item_or_entity: Can be '1', 'E1', etc.
-        
-        Returns:
-            Entity ID in 'E<number>' format
-        """
-        if not item_or_entity:
-            return ""
-        
-        # Already in entity format
-        if item_or_entity.startswith('E'):
-            return item_or_entity
-        
-        # Convert item_id to entity_id
-        return f"E{item_or_entity}"
-    
-    def _get_item_name(self, item_or_entity: str) -> str:
-        """
-        Get human-readable name for an item/entity
-        
-        Args:
-            item_or_entity: Can be item_id or entity_id
-        
-        Returns:
-            Human-readable name or the ID if not found
-        """
-        entity_id = self._normalize_entity_id(item_or_entity)
-        return self.entity_to_name.get(entity_id, item_or_entity)
-    
-    def analyze_user_intents(self, user_history: List[str]) -> Dict:
-        """
-        KGIN-style: Model user intents as combinations of KG relations
-        
-        Returns:
-            Dict with detected intents and their strengths
-        """
-        if not user_history:
-            return {'intents': [], 'primary_intent': None}
-        
-        # Count topics and levels from history
-        topic_counts = Counter()
-        level_counts = Counter()
-        
-        for item_id in user_history:
-            entity_id = f"E{item_id}" if not item_id.startswith('E') else item_id
-            
-            topics = self.entity_to_topics.get(entity_id, [])
-            for t in topics:
-                topic_counts[t] += 1
-            
-            level = self.entity_to_levels.get(entity_id)
-            if level:
-                level_counts[level] += 1
-        
-        # Build intents as topic+level combinations
-        intents = []
-        
-        # Primary topic intent
-        if topic_counts:
-            primary_topic = topic_counts.most_common(1)[0]
-            topic_clean = primary_topic[0].replace('T_', '').replace('_', ' ')
-            intents.append({
-                'type': 'topic_focus',
-                'value': primary_topic[0],
-                'name': topic_clean,
-                'strength': primary_topic[1] / len(user_history),
-                'description': self.TOPIC_DESCRIPTIONS.get(primary_topic[0], 'Chủ đề học tập')
-            })
-        
-        # Level preference intent
-        if level_counts:
-            primary_level = level_counts.most_common(1)[0]
-            level_clean = primary_level[0].replace('L_', 'Level ')
-            intents.append({
-                'type': 'level_preference',
-                'value': primary_level[0],
-                'name': level_clean,
-                'strength': primary_level[1] / len(user_history),
-                'description': self.LEVEL_DESCRIPTIONS.get(primary_level[0], 'Mức độ phù hợp')
-            })
-        
-        # Detect topic progression intent
-        if len(topic_counts) > 1:
-            intents.append({
-                'type': 'knowledge_expansion',
-                'name': 'Mở rộng kiến thức',
-                'strength': len(topic_counts) / max(len(user_history), 1),
-                'description': f'Bạn đang học đa dạng {len(topic_counts)} chủ đề khác nhau'
-            })
-        
-        return {
-            'intents': intents,
-            'primary_intent': intents[0] if intents else None,
-            'topic_distribution': dict(topic_counts),
-            'level_distribution': dict(level_counts)
-        }
-    
-    def calculate_relation_importance(
-        self, 
-        item_id: str, 
+
+    def find_attention_paths(
+        self,
         user_history: List[str],
-        attention_weights: Optional[Dict] = None
+        target_item: str,
+        edge_attention: Dict[Tuple[str, str, str], float],
+        max_paths: int = 3
     ) -> List[Dict]:
         """
-        KGAT-style: Calculate importance of each relation for this recommendation
-        
-        Uses attention patterns if available, otherwise uses heuristic scoring
+        Extract paths from user history to target item with attention scores
         """
-        entity_id = f"E{item_id}" if not item_id.startswith('E') else item_id
+        target_entity = self._normalize_entity_id(target_item)
+        history_entities = [self._normalize_entity_id(h) for h in user_history[-5:]]
         
-        # Get user's topic/level preferences
-        user_intents = self.analyze_user_intents(user_history)
+        # We'll use a simplified version for common demo scenarios:
+        # History -> Topic -> Target or History -> Level -> Target
+        paths = []
         
-        # Get item's relations
-        item_topics = self.entity_to_topics.get(entity_id, [])
-        item_level = self.entity_to_levels.get(entity_id)
+        for hist_entity in history_entities:
+            # Topic paths
+            h_topics = self.entity_to_topics.get(hist_entity, [])
+            t_topics = self.entity_to_topics.get(target_entity, [])
+            shared_topics = set(h_topics) & set(t_topics)
+            
+            for topic in shared_topics:
+                edge1 = (hist_entity, 'has_topic', topic)
+                edge2 = (topic, 'topic_of', target_entity)
+                
+                # If topic_of isn't in kg_triples, it might be the inverse of has_topic
+                # We normalize relations for scoring
+                score1 = edge_attention.get(edge1, 0.5)
+                # Map target_entity -> has_topic -> topic as the actual edge in KGAT
+                score2 = edge_attention.get((target_entity, 'has_topic', topic), 0.5)
+                
+                paths.append({
+                    'type': 'topic',
+                    'total_attention': score1 + score2,
+                    'steps': [
+                        {'head': self._get_item_name(hist_entity), 'relation': 'đã hoàn thành', 'tail': self._get_item_name(topic), 'attention': score1},
+                        {'head': self._get_item_name(topic), 'relation': 'là chủ đề của', 'tail': self._get_item_name(target_entity), 'attention': score2}
+                    ]
+                })
+
+            # Level paths
+            h_level = self.entity_to_levels.get(hist_entity)
+            t_level = self.entity_to_levels.get(target_entity)
+            if h_level and h_level == t_level:
+                edge1 = (hist_entity, 'has_level', h_level)
+                score1 = edge_attention.get(edge1, 0.4)
+                score2 = edge_attention.get((target_entity, 'has_level', t_level), 0.4)
+                
+                paths.append({
+                    'type': 'level',
+                    'total_attention': score1 + score2,
+                    'steps': [
+                        {'head': self._get_item_name(hist_entity), 'relation': 'cùng độ khó', 'tail': h_level.replace('L_', 'Level '), 'attention': score1},
+                        {'head': h_level.replace('L_', 'Level '), 'relation': 'là cấp độ của', 'tail': self._get_item_name(target_entity), 'attention': score2}
+                    ]
+                })
+
+        # Sort and limit
+        paths.sort(key=lambda x: x['total_attention'], reverse=True)
+        return paths[:max_paths]
+
+    def format_attention_paths_input(self, user_id: str, item_name: str, attention_paths: List[Dict]) -> str:
+        """
+        Format paths into the 'Input' style for LLM as requested
+        """
+        lines = [f"user_id = \"{user_id}\"", f"item_id = \"{item_name}\"", "\n# Attention paths extracted:"]
+        lines.append('"""')
         
-        relations = []
-        
-        # Score topic relation
-        topic_score = 0.0
-        matching_topics = []
-        for topic in item_topics:
-            if topic in user_intents.get('topic_distribution', {}):
-                topic_score += user_intents['topic_distribution'][topic]
-                matching_topics.append(topic)
-        
-        if item_topics:
-            topic_score = min(1.0, topic_score / max(len(user_history), 1))
-            topic_name = item_topics[0].replace('T_', '').replace('_', ' ')
-            relations.append({
-                'relation': 'has_topic',
-                'value': item_topics[0],
-                'display_name': topic_name,
-                'importance': topic_score,
-                'reason': f'Chủ đề "{topic_name}" phù hợp với xu hướng học của bạn' if matching_topics else f'Chủ đề mới: "{topic_name}"'
-            })
-        
-        # Score level relation
-        level_score = 0.0
-        if item_level:
-            if item_level in user_intents.get('level_distribution', {}):
-                level_score = user_intents['level_distribution'][item_level] / max(len(user_history), 1)
-            level_name = item_level.replace('L_', 'Level ')
-            relations.append({
-                'relation': 'has_level',
-                'value': item_level,
-                'display_name': level_name,
-                'importance': min(1.0, level_score + 0.3),  # Base importance for matching level
-                'reason': self.LEVEL_DESCRIPTIONS.get(item_level, 'Độ khó phù hợp')
-            })
-        
-        # Sort by importance
-        relations.sort(key=lambda x: x['importance'], reverse=True)
-        
-        return relations
-    
-    def generate_path_explanation(
+        for i, path in enumerate(attention_paths, 1):
+            lines.append(f"Path {i} (Tổng attention: {path['total_attention']:.2f}):")
+            for step in path['steps']:
+                lines.append(f"  {step['head']} --[{step['relation']}]--> {step['tail']} (attention: {step['attention']:.3f})")
+            lines.append("")
+            
+        lines.append('"""')
+        return "\n".join(lines)
+
+    def generate_llm_explanation(
         self,
-        from_item: str,
-        to_item: str,
-        path: List[Tuple[str, str, str]]
+        student_code: str,
+        item_name: str,
+        attention_paths: List[Dict],
+        llm_client = None
     ) -> str:
         """
-        Generate natural language explanation for a KG path
-        
-        KGAT insight: Explain WHY this path matters based on attention patterns
+        Use LLM to interpret attention paths into natural language
         """
-        if not path:
-            return ""
+        input_data = self.format_attention_paths_input(student_code, item_name, attention_paths)
         
-        from_name = self._get_item_name(from_item)
-        to_name = self._get_item_name(to_item)
-        
-        # Single hop: direct relation
-        if len(path) == 1:
-            head, rel, tail = path[0]
-            rel_info = self.RELATION_SEMANTICS.get(rel, {'name': rel})
-            return f"**{from_name}** {rel_info['name']} **{tail.replace('T_', '').replace('L_', 'Level ').replace('_', ' ')}**"
-        
-        # Two hops: typical topic/level connection
-        if len(path) == 2:
-            _, rel1, middle = path[0]
-            _, rel2, _ = path[1]
-            
-            middle_clean = middle.replace('T_', '').replace('L_', '').replace('_', ' ')
-            
-            if 'topic' in rel1:
-                return (
-                    f"Bạn đã làm **{from_name}** về chủ đề **{middle_clean}**. "
-                    f"Bài **{to_name}** cũng thuộc chủ đề này, giúp củng cố kiến thức."
+        prompt = f"""
+Bạn là chuyên gia về AI và giáo dục. Dựa trên dữ liệu attention từ mô hình KGAT dưới đây, hãy viết một đoạn giải thích ngắn gọn, tự nhiên và thuyết phục (khoảng 3-4 câu) tại sao bài tập lại được gợi ý cho sinh viên.
+
+{input_data}
+
+Yêu cầu:
+1. Đề cập rõ việc dùng mô hình KGAT và các trọng số attention quan trọng nhất.
+2. Kết nối các kỹ năng/chủ đề từ lịch sử học tập đến bài tập gợi ý.
+3. Giọng văn khuyến khích, chuyên nghiệp, bằng tiếng Việt.
+4. Trả về trực tiếp nội dung giải thích, không thêm các phần mở đầu/kết thúc khác.
+"""
+        if llm_client:
+            try:
+                # Assuming llm_client follows Mistral/OpenAI interface
+                response = llm_client.chat.complete(
+                    model="mistral-small-latest",
+                    messages=[{"role": "user", "content": prompt}]
                 )
-            elif 'level' in rel1:
-                return (
-                    f"**{from_name}** và **{to_name}** cùng ở **{middle_clean}**, "
-                    f"đảm bảo độ khó phù hợp với trình độ của bạn."
-                )
+                return response.choices[0].message.content
+            except Exception as e:
+                print(f"LLM Error: {e}")
+                return self._generate_fallback_explanation(item_name, attention_paths)
         
-        # Longer paths
-        return f"Có mối liên hệ nhiều bước giữa **{from_name}** và **{to_name}** trong đồ thị tri thức."
-    
-    def explain_single_recommendation(
+        return self._generate_fallback_explanation(item_name, attention_paths)
+
+    def _generate_fallback_explanation(self, item_name: str, attention_paths: List[Dict]) -> str:
+        """Fallback natural language generator if LLM fails"""
+        if not attention_paths:
+            return f"Bài tập '{item_name}' được gợi ý dựa trên sự phù hợp tổng thể với lộ trình học tập của bạn."
+            
+        best_path = attention_paths[0]
+        factor = best_path['steps'][0]['tail']
+        score = best_path['steps'][0]['attention']
+        
+        return f"Mô hình KGAT đã nhận thấy mối liên hệ mạnh mẽ (attention: {score:.2f}) từ những bài tập bạn đã làm liên quan đến '{factor}'. Dựa trên kết nối này trong Knowledge Graph, bài '{item_name}' là thử thách tiếp theo phù hợp nhất cho bạn."
+
+    def _normalize_entity_id(self, item_or_entity) -> str:
+        if not item_or_entity: return ""
+        if str(item_or_entity).startswith('E'): return str(item_or_entity)
+        return f"E{item_or_entity}"
+
+    def _get_item_name(self, item_or_entity) -> str:
+        entity_id = self._normalize_entity_id(item_or_entity)
+        name = self.entity_to_name.get(entity_id, str(item_or_entity))
+        # Clean T_ and L_ prefixes for display
+        return str(name).replace('T_', '').replace('L_', '').replace('_', ' ')
+
+    def explain_single_item(
         self,
+        student_code: str,
         item_id: str,
-        user_history: List[str],
-        score: float = 0.0,
-        attention_weights: Optional[Dict] = None
+        user_history: List[str] = None,
+        edge_attention: Dict = None,
+        llm_client = None
     ) -> Dict:
         """
-        Generate comprehensive explanation for a single recommendation
-        
-        Combines:
-        1. Relation importance (KGAT attention simulation)
-        2. User intent alignment (KGIN technique)
-        3. Path-based reasoning
-        4. Natural language synthesis
+        Produce a structured explanation for a single item (compatible with router)
         """
-        entity_id = f"E{item_id}" if not item_id.startswith('E') else item_id
+        entity_id = self._normalize_entity_id(item_id)
+        item_name = self._get_item_name(item_id)
         
-        # Get item info
-        item_name = self._get_item_name(entity_id)
-        item_topics = self.entity_to_topics.get(entity_id, [])
-        item_level = self.entity_to_levels.get(entity_id)
+        # 1. Component Data
+        attention_paths = self.find_attention_paths(user_history or [], item_id, edge_attention or {})
         
-        # Analyze user intents
-        user_intents = self.analyze_user_intents(user_history)
+        # 2. Natural Language (LLM or Fallback)
+        llm_text = self.generate_llm_explanation(student_code, item_name, attention_paths, llm_client)
         
-        # Calculate relation importance
-        relation_importance = self.calculate_relation_importance(entity_id, user_history, attention_weights)
-        
-        # Find connections to user history
-        connections = []
-        for hist_item in (user_history or [])[-5:]:
-            hist_entity = f"E{hist_item}" if not hist_item.startswith('E') else hist_item
-            hist_topics = self.entity_to_topics.get(hist_entity, [])
-            hist_level = self.entity_to_levels.get(hist_entity)
-            
-            # Check for shared topics
-            shared_topics = set(item_topics) & set(hist_topics)
-            for topic in shared_topics:
-                path = [
-                    (hist_entity, 'has_topic', topic),
-                    (topic, 'topic_of', entity_id)
-                ]
-                connections.append({
-                    'from_item': hist_entity,
-                    'from_name': self._get_item_name(hist_entity),
-                    'connection_type': 'topic',
-                    'shared_value': topic,
-                    'path': path,
-                    'explanation': self.generate_path_explanation(hist_entity, entity_id, path)
-                })
-            
-            # Check for same level
-            if item_level and item_level == hist_level:
-                path = [
-                    (hist_entity, 'has_level', item_level),
-                    (item_level, 'level_of', entity_id)
-                ]
-                connections.append({
-                    'from_item': hist_entity,
-                    'from_name': self._get_item_name(hist_entity),
-                    'connection_type': 'level',
-                    'shared_value': item_level,
-                    'path': path,
-                    'explanation': self.generate_path_explanation(hist_entity, entity_id, path)
-                })
-        
-        # Build explanation
-        explanation = {
+        # 3. Router-compatible dict
+        return {
             'item_id': item_id,
             'entity_id': entity_id,
             'item_name': item_name,
-            'score': score,
-            'topic': item_topics[0] if item_topics else None,
-            'topic_name': item_topics[0].replace('T_', '').replace('_', ' ') if item_topics else None,
-            'topic_description': self.TOPIC_DESCRIPTIONS.get(item_topics[0], '') if item_topics else None,
-            'level': item_level,
-            'level_name': item_level.replace('L_', 'Level ') if item_level else None,
-            'level_description': self.LEVEL_DESCRIPTIONS.get(item_level, '') if item_level else None,
-            'user_intents': user_intents,
-            'relation_importance': relation_importance,
-            'connections': connections,
-            'kgat_analysis': self._generate_kgat_analysis(relation_importance),
-            'kgin_analysis': self._generate_kgin_analysis(user_intents, item_topics, item_level)
+            'metadata': {
+                'topic': self.entity_to_topics.get(entity_id, [''])[0],
+                'level': self.entity_to_levels.get(entity_id, ''),
+                'name': item_name
+            },
+            'shared_entities': [], # Not used in KGAT flow as much
+            'paths_from_history': attention_paths,
+            'kg_context_text': llm_text,
+            'kg_context_md': llm_text, # Redundant for safety
+            'input_data_technical': self.format_attention_paths_input(student_code, item_name, attention_paths)
         }
-        
-        return explanation
-    
-    def _generate_kgat_analysis(self, relation_importance: List[Dict]) -> str:
-        """Generate KGAT-style analysis text"""
-        if not relation_importance:
-            return ""
-        
-        lines = ["**Phân tích KGAT (Attention-weighted):**"]
-        for rel in relation_importance[:2]:
-            importance_pct = int(rel['importance'] * 100)
-            lines.append(f"- Quan hệ `{rel['relation']}` → **{rel['display_name']}** (trọng số: {importance_pct}%)")
-            lines.append(f"  _{rel['reason']}_")
-        
-        return "\n".join(lines)
-    
-    def _generate_kgin_analysis(self, user_intents: Dict, item_topics: List[str], item_level: str) -> str:
-        """Generate KGIN-style intent analysis"""
-        if not user_intents.get('intents'):
-            return ""
-        
-        lines = ["**Phân tích KGIN (User Intent):**"]
-        
-        primary = user_intents.get('primary_intent')
-        if primary:
-            lines.append(f"- Xu hướng chính: **{primary['name']}** (độ mạnh: {int(primary['strength']*100)}%)")
-            lines.append(f"  _{primary['description']}_")
-        
-        # Check if item matches intents
-        for intent in user_intents['intents']:
-            if intent['type'] == 'topic_focus' and item_topics:
-                if intent['value'] in item_topics:
-                    lines.append(f"- ✓ Bài tập này phù hợp với xu hướng chủ đề của bạn")
-            elif intent['type'] == 'level_preference' and item_level:
-                if intent['value'] == item_level:
-                    lines.append(f"- ✓ Độ khó phù hợp với mức bạn đang luyện tập")
-        
-        return "\n".join(lines)
-    
-    def format_explanation_text(self, explanation: Dict) -> str:
-        """
-        Format explanation into readable markdown text with KGAT/KGIN analysis
-        
-        Designed for display in frontend and LLM consumption
-        """
-        lines = []
-        
-        # Basic info
-        lines.append(f"- **Chủ đề**: {explanation.get('topic_name', 'Không xác định')}")
-        if explanation.get('topic_description'):
-            lines.append(f"  _{explanation['topic_description']}_")
-        
-        lines.append(f"- **Độ khó**: {explanation.get('level_name', 'Không xác định')}")
-        if explanation.get('level_description'):
-            lines.append(f"  _{explanation['level_description']}_")
-        
-        # KGIN User Intent Analysis (show first to explain WHY this is recommended)
-        user_intents = explanation.get('user_intents', {})
-        if user_intents and user_intents.get('intents'):
-            lines.append("\n🎯 **Phân tích KGIN (Phù hợp với xu hướng học của bạn):**")
-            
-            primary_intent = user_intents.get('primary_intent')
-            if primary_intent:
-                lines.append(f"- Bạn đang tập trung vào: **{primary_intent['name']}** ({int(primary_intent['strength']*100)}% lịch sử)")
-                
-                # Check if current item matches the intent
-                item_topic = explanation.get('topic')
-                item_level = explanation.get('level')
-                
-                if primary_intent['type'] == 'topic_focus' and item_topic:
-                    if primary_intent['value'] == item_topic:
-                        lines.append(f"  ✓ _Bài này thuộc chủ đề bạn đang học → Củng cố kiến thức hiệu quả_")
-                    else:
-                        topic_name = explanation.get('topic_name', 'chủ đề mới')
-                        lines.append(f"  → _Bài này giới thiệu {topic_name} → Mở rộng kiến thức_")
-                
-                elif primary_intent['type'] == 'level_preference' and item_level:
-                    if primary_intent['value'] == item_level:
-                        lines.append(f"  ✓ _Độ khó phù hợp với trình độ hiện tại của bạn_")
-                    else:
-                        lines.append(f"  → _Độ khó khác biệt → Thử thách mới để tiến bộ_")
-        
-        # KGAT Attention-Weighted Path Analysis
-        relation_importance = explanation.get('relation_importance', [])
-        if relation_importance:
-            lines.append("\n📊 **Phân tích KGAT (Trọng số quan hệ trong Knowledge Graph):**")
-            
-            for rel in relation_importance[:2]:  # Top 2 most important relations
-                importance_pct = int(rel['importance'] * 100)
-                
-                # Explain what this relation means
-                if rel['relation'] == 'has_topic':
-                    lines.append(f"- **Quan hệ chủ đề** (trọng số: {importance_pct}%)")
-                    lines.append(f"  Chủ đề \"{rel['display_name']}\" - {rel['reason']}")
-                elif rel['relation'] == 'has_level':
-                    lines.append(f"- **Quan hệ độ khó** (trọng số: {importance_pct}%)")
-                    lines.append(f"  {rel['display_name']} - {rel['reason']}")
-        
-        # Connection-based reasoning (only show meaningful connections with actual names)
-        connections = explanation.get('connections', [])
-        if connections:
-            lines.append("\n🔗 **Kết nối với bài đã làm:**")
-            
-            # Group connections by type
-            topic_connections = [c for c in connections if c.get('connection_type') == 'topic']
-            level_connections = [c for c in connections if c.get('connection_type') == 'level']
-            
-            # Show topic connections (more important)
-            if topic_connections:
-                for conn in topic_connections[:2]:  # Limit to 2
-                    from_name = conn.get('from_name', 'bài trước')
-                    shared_topic = conn.get('shared_value', '').replace('T_', '').replace('_', ' ')
-                    
-                    lines.append(f"- Liên quan đến **{from_name}**")
-                    lines.append(f"  → Cùng chủ đề: **{shared_topic}**")
-                    lines.append(f"  _Giúp củng cố và mở rộng kiến thức về {shared_topic}_")
-            
-            # Show level connections if no topic connections
-            elif level_connections:
-                for conn in level_connections[:1]:  # Just 1 level connection
-                    from_name = conn.get('from_name', 'bài trước')
-                    shared_level = conn.get('shared_value', '').replace('L_', 'Level ')
-                    
-                    lines.append(f"- Liên quan đến **{from_name}**")
-                    lines.append(f"  → Cùng độ khó: **{shared_level}**")
-                    lines.append(f"  _Duy trì độ khó phù hợp để học hiệu quả_")
-        
-        return "\n".join(lines)
-    
+
     def explain_recommendations(
         self,
         student_code: str,
         recommendations: List[Dict],
         user_history: List[str] = None,
-        attention_data: Optional[Dict] = None
+        edge_attention: Dict = None,
+        llm_client = None
     ) -> str:
-        """
-        Generate comprehensive explanation for all recommendations
+        """Main entry point for generating the full explanation report (Markdown)"""
+        full_sections = [f"# Giải thích gợi ý KGAT cho sinh viên {student_code}\n"]
         
-        For AI Analysis panel
-        """
-        sections = []
-        
-        # Header
-        sections.append(f"# Giải thích gợi ý cho sinh viên {student_code}\n")
-        
-        # 1. User Intent Analysis (KGIN)
-        if user_history:
-            user_intents = self.analyze_user_intents(user_history)
-            sections.append("## 1. Phân tích xu hướng học tập (KGIN Model)\n")
+        for i, rec in enumerate(recommendations[:3]): # Top 3 for detailed report
+            item_id = str(rec.get('external_id', rec.get('id', '')))
             
-            if user_intents['intents']:
-                for intent in user_intents['intents']:
-                    strength_bar = "█" * int(intent['strength'] * 10) + "░" * (10 - int(intent['strength'] * 10))
-                    sections.append(f"- **{intent['name']}**: [{strength_bar}] {int(intent['strength']*100)}%")
-                    sections.append(f"  _{intent.get('description', '')}_\n")
-            else:
-                sections.append("_Chưa có đủ dữ liệu để phân tích xu hướng_\n")
-        
-        # 2. Recommendations overview
-        sections.append("## 2. Danh sách bài tập gợi ý\n")
-        
-        # Group by topic
-        topic_groups = defaultdict(list)
-        for i, rec in enumerate(recommendations):
-            item_id = str(rec.get('id', rec.get('external_id', '')))
-            entity_id = f"E{item_id}" if not item_id.startswith('E') else item_id
-            topics = self.entity_to_topics.get(entity_id, [])
-            topic = topics[0] if topics else 'Unknown'
-            topic_groups[topic].append((i + 1, rec))
-        
-        for topic, items in topic_groups.items():
-            topic_name = topic.replace('T_', '').replace('_', ' ')
-            topic_desc = self.TOPIC_DESCRIPTIONS.get(topic, '')
-            sections.append(f"### {topic_name}")
-            if topic_desc:
-                sections.append(f"_{topic_desc}_\n")
+            # Use explain_single_item to get data
+            item_data = self.explain_single_item(student_code, item_id, user_history, edge_attention, llm_client)
             
-            for rank, rec in items:
-                name = rec.get('title', rec.get('name', f"Bài {rank}"))
-                level = rec.get('difficulty', 'Unknown')
-                sections.append(f"- **{rank}. {name}** ({level})")
-            sections.append("")
-        
-        # 3. Technical Analysis (KGAT)
-        sections.append("## 3. Phân tích kỹ thuật (KGAT Model)\n")
-        sections.append("Mô hình KGAT sử dụng cơ chế attention để tính trọng số cho các quan hệ trong Knowledge Graph:\n")
-        
-        # Calculate aggregate relation importance
-        all_relations = []
-        for rec in recommendations:
-            item_id = str(rec.get('id', rec.get('external_id', '')))
-            rel_imp = self.calculate_relation_importance(item_id, user_history or [])
-            all_relations.extend(rel_imp)
-        
-        # Aggregate by relation type
-        rel_scores = defaultdict(list)
-        for rel in all_relations:
-            rel_scores[rel['relation']].append(rel['importance'])
-        
-        sections.append("| Quan hệ | Trọng số TB | Mô tả |")
-        sections.append("|---------|-------------|-------|")
-        for rel, scores in rel_scores.items():
-            avg_score = sum(scores) / len(scores) if scores else 0
-            rel_info = self.RELATION_SEMANTICS.get(rel, {'name': rel, 'importance_hint': ''})
-            sections.append(f"| `{rel}` | {int(avg_score*100)}% | {rel_info.get('importance_hint', '')} |")
-        
-        sections.append("")
-        
-        # 4. KG Structure
-        sections.append("## 4. Cấu trúc Knowledge Graph\n")
-        sections.append("Đồ thị tri thức được sử dụng có cấu trúc:\n")
-        sections.append("- **Entities (E)**: Các bài tập lập trình")
-        sections.append("- **Topics (T)**: Các chủ đề kiến thức")
-        sections.append("- **Levels (L)**: Các mức độ khó")
-        sections.append("\nQuan hệ chính:")
-        sections.append("- `has_topic`: Bài tập → Chủ đề")
-        sections.append("- `has_level`: Bài tập → Độ khó")
-        sections.append("- `topic_of`: Chủ đề → Bài tập (nghịch đảo)")
-        sections.append("- `level_of`: Độ khó → Bài tập (nghịch đảo)")
-        
-        return "\n".join(sections)
+            full_sections.append(f"### {i+1}. {item_data['item_name']}")
+            full_sections.append(item_data['kg_context_text'])
+            full_sections.append("\n**Dữ liệu Attention KGAT:**")
+            full_sections.append("```")
+            full_sections.append(item_data['input_data_technical'])
+            full_sections.append("```\n")
+            
+        return "\n".join(full_sections)
 
 
 # Factory function for easy integration

@@ -98,16 +98,76 @@ def get_recommendations_with_explanations(
         - recommendations: List of (item_internal_id, item_external_id, score)
         - explanation_data: Dict with KG context and optional attention info
     """
-    # Get basic recommendations
-    recommendations = get_top_k_recommendations(model, dataset, user_id, topk)
+    # Create explainer and extractor
+    from enhanced_kg_explainer import create_enhanced_explainer
+    from attention_extractor import AttentionExtractor
+    from recbole.data.interaction import Interaction
     
+    explainer = create_enhanced_explainer()
+    extractor = AttentionExtractor(model, dataset)
+    
+    # 1. Get raw scores and items using RecBole directly
+    model.eval()
+    uid_field = dataset.uid_field
+    iid_field = dataset.iid_field
+    
+    user_inter = Interaction({uid_field: torch.tensor([user_id])})
+    with torch.no_grad():
+        all_scores = model.full_sort_predict(user_inter.to(model.device)).view(-1)
+        topk_scores, topk_iids_internal = torch.topk(all_scores, min(topk, len(all_scores)))
+    
+    # Convert internal IDs to external IDs
+    item_id2token = dataset.field2id_token[iid_field]
+    
+    # 2. Extract attention if requested
+    attention_weights = {}
+    if extract_attention:
+        # Pass internal user and item IDs to the extractor
+        # Use our new extract_kgat_attention method if we want path-level, 
+        # but for now extract_attention_for_user is fine as a fallback
+        attention_info = extractor.extract_attention_for_user(user_id)
+        attention_weights = attention_info.get('relation_attention', {})
+    
+    # 3. Generate explanations for top-K
+    formatted_recommendations = []
+    item_explanations = {}
+    
+    for i, item_internal_id_tensor in enumerate(topk_iids_internal):
+        item_internal_id = int(item_internal_id_tensor.item())
+        score = float(topk_scores[i].item())
+        
+        # Get external ID
+        try:
+            item_external_id = item_id2token[item_internal_id]
+        except:
+            item_external_id = str(item_internal_id)
+            
+        formatted_recommendations.append((item_internal_id, item_external_id, score))
+        
+        # Prepare item for explainer
+        item_name = item_details.get(str(item_external_id), {}).get('name', str(item_external_id))
+        
+        # Enhanced explanation outputting Dict for router
+        item_explanation_dict = explainer.explain_single_item(
+            str(user_id), 
+            str(item_external_id),
+            user_history or [],
+            attention_weights
+        )
+        
+        item_explanations[str(item_external_id)] = {
+            'kg_explanation': item_explanation_dict,
+            'kg_context_text': item_explanation_dict['kg_context_text'],
+            'score': score
+        }
+        
     explanation_data = {
-        'kg_available': False,
-        'item_explanations': {},
-        'attention_info': None
+        'kg_available': True,
+        'item_explanations': item_explanations,
+        'attention_info': attention_weights
     }
     
-    if not KG_AVAILABLE:
+    return formatted_recommendations, explanation_data
         print("KG modules not available")
         return recommendations, explanation_data
     

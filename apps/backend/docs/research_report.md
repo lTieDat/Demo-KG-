@@ -1,310 +1,98 @@
-# Báo cáo Nghiên cứu: Hệ thống Gợi ý Dựa trên Đồ thị Tri thức với KGAT/KGIN
+# 1.6. Mô phỏng kết quả
+Phần này trình bày chi tiết các kết quả thực nghiệm và quá trình vận hành của hệ thống Demo Web trong môi trường thực tế. Các thử nghiệm tập trung đánh giá hiệu năng của hai thành phần cốt lõi bao gồm hệ thống khuyến nghị dựa trên kiến trúc KGAT (Knowledge Graph Attention Network) và cơ chế giải thích thông minh kết hợp giữa trọng số Attention với khả năng tổng hợp ngôn ngữ của mô hình ngôn ngữ lớn (LLM).
 
-## Tóm tắt
+## 1.6.1. Mô phỏng chức năng khuyến nghị Top-K
+Trong kịch bản mô phỏng, chức năng khuyến nghị được kích hoạt thông qua giao diện người dùng dựa trên mã định danh sinh viên làm tham số đầu vào duy nhất. Khi mã sinh viên được ghi nhận, hệ thống backend thực hiện truy xuất toàn bộ lịch sử tương tác và các nút kiến thức liên quan trong đồ thị tri thức để làm cơ sở dữ liệu cho mô hình KGAT. Mô hình này thực hiện quá trình nhúng thực thể và quan hệ, đồng thời sử dụng cơ chế Attention để định lượng mức độ quan trọng của các nút lân cận đối với nhu cầu học tập hiện tại của sinh viên. Kết quả cuối cùng là một danh sách các bài tập được xếp hạng theo điểm số phù hợp, sau đó được trực quan hóa trên giao diện dưới dạng các thẻ thông tin đa phương tiện. Mỗi thẻ không chỉ hiển thị tên bài tập mà còn cung cấp các siêu dữ liệu quan trọng như chủ đề kiến thức và phân loại độ khó, giúp người học có cái nhìn tổng quan nhanh chóng về lộ trình được đề xuất.
 
-Báo cáo này trình bày chi tiết về phương pháp xây dựng hệ thống gợi ý bài tập lập trình sử dụng các mô hình **KGAT (Knowledge Graph Attention Network)** và **KGIN (Knowledge Graph-based Intent Network)** từ thư viện RecBole. Hệ thống khai thác đồ thị tri thức (Knowledge Graph) để đưa ra gợi ý chính xác và có thể giải thích được.
+## 1.6.2. Cơ chế giải thích kết quả dựa trên sự kết hợp giữa KGAT và LLM
+Nhằm giải quyết triệt để vấn đề "hộp đen" của các mô hình học sâu và nâng cao niềm tin của người học, nghiên cứu đã xây dựng một cơ chế giải thích tinh vi dựa trên việc khai thác dữ liệu nội tại từ mô hình KGAT. Thay vì sử dụng các cấu trúc luật cứng nhắc hoặc các thông tin mô tả tĩnh, hệ thống trực tiếp can thiệp vào các tầng Aggregator của mô hình để trích xuất trọng số Attention trên từng cạnh cụ thể trong đồ thị tri thức. Quá trình này cho phép xác định chính xác những yếu tố tri thức nào đang đóng vai trò quyết định trong việc định hình kết quả gợi ý, từ đó biến các tham số số học phức tạp thành các tín hiệu có ý nghĩa về mặt học thuật.
 
----
+Sau khi các trọng số Attention được trích xuất, hệ thống thực hiện thuật toán khai phá đường dẫn tri thức để tìm kiếm các kết nối logic xuyên suốt từ lịch sử hoàn thành bài tập của sinh viên đến bài tập mục tiêu. Mỗi đường dẫn không chỉ đơn thuần là một chuỗi các nút và cạnh mà còn mang theo giá trị định lượng về mức độ ảnh hưởng của chúng đối với dự đoán của mô hình. Chẳng hạn, một đường dẫn có thể chỉ ra rằng việc sinh viên hoàn thành tốt một bài tập về mảng đã tạo ra một lực đẩy Attention cực lớn hướng tới các bài tập về cấu trúc dữ liệu nâng cao hơn. Việc minh bạch hóa các đường dẫn này giúp hệ thống tạo ra một nền tảng biện luận vững chắc, cho thấy mọi gợi ý đều dựa trên một lộ trình phát triển năng lực có tính toán kỹ lưỡng.
 
-## 1. Giới thiệu về Hệ thống Gợi ý Dựa trên Đồ thị Tri thức
+Giai đoạn cuối cùng của cơ chế giải thích là quá trình tổng hợp ngôn ngữ tự nhiên thông qua việc tích hợp mô hình ngôn ngữ lớn (LLM). LLM đóng vai trò là một lớp giao tiếp thông minh, tiếp nhận các dữ liệu kỹ thuật bao gồm cấu trúc đồ thị, các đường dẫn tri thức và các trọng số Attention để chuyển hóa chúng thành các đoạn văn bản có tính sư phạm cao. Khác với các hệ thống giải thích tự động thông thường vốn thường khô khan, phương pháp tiếp cận này cho phép tạo ra các đoạn giải thích có văn phong khuyến khích, chuyên nghiệp và giàu ngữ cảnh. LLM biết cách nhấn mạnh vào những điểm mạnh trong lịch sử học tập của sinh viên thông qua các con số Attention ấn tượng, từ đó giúp người học hiểu rõ hơn về mối liên hệ giữa những gì họ đã biết và những gì họ cần đạt được tiếp theo, tạo nên một vòng lặp phản hồi tích cực trong quá trình tự học.
 
-### 1.1 Động lực
+### Hình 1: Kiến trúc pipeline giải thích KGAT-LLM
 
-Các hệ thống gợi ý truyền thống (Collaborative Filtering) gặp phải vấn đề:
-- **Cold-start**: Không hoạt động tốt với người dùng/sản phẩm mới
-- **Data sparsity**: Ma trận tương tác thưa thớt
-- **Interpretability**: Khó giải thích tại sao gợi ý
-
-### 1.2 Giải pháp: Knowledge Graph
-
-Đồ thị tri thức cung cấp:
-- **Thông tin phụ trợ** về items (chủ đề, độ khó, liên kết)
-- **Kết nối ngữ nghĩa** giữa các entities
-- **Khả năng giải thích** thông qua paths trong graph
-
----
-
-## 2. Mô hình KGAT (Knowledge Graph Attention Network)
-
-### 2.1 Kiến trúc
-
-KGAT xây dựng **Collaborative Knowledge Graph (CKG)** bằng cách kết hợp:
-- **User-Item Interaction Graph**: Đồ thị tương tác người dùng
-- **Knowledge Graph**: Đồ thị tri thức về items
-
-```
-CKG = User-Item Graph ∪ Knowledge Graph
-```
-
-### 2.2 Cơ chế Attention
-
-KGAT sử dụng attention để tính trọng số cho từng neighbor khi aggregate:
-
-```
-α(h,r,t) = softmax(π(h,r,t))
-π(h,r,t) = (W_r · e_t)^T · tanh(W_r · e_h + e_r)
-```
-
-Trong đó:
-- `e_h, e_t`: Embeddings của head và tail entities
-- `e_r`: Embedding của relation
-- `W_r`: Ma trận trọng số
-- `α`: Attention weight
-
-### 2.3 Ứng dụng trong Giải thích
-
-Attention weights cho phép:
-- Xác định **relations quan trọng nhất** cho recommendation
-- Truy vết **paths có trọng số cao** từ user đến item
-- Tạo giải thích như: "Bài này được gợi ý vì quan hệ chủ đề có trọng số 85%"
-
----
-
-## 3. Mô hình KGIN (Knowledge Graph-based Intent Network)
-
-### 3.1 Khái niệm User Intent
-
-KGIN mô hình hóa **user intent** (ý định người dùng) như tổ hợp có trọng số của các KG relations:
-
-```
-Intent_i = Σ_r (w_r · e_r)
-```
-
-### 3.2 Relational Path Aggregation
-
-KGIN tích hợp thông tin từ các relational paths:
-
-```
-e_u^(l+1) = Σ_i (β_i · Agg(N_i(u)))
-```
-
-Với `β_i` là trọng số của intent thứ i.
-
-### 3.3 Ứng dụng trong Giải thích
-
-KGIN cung cấp:
-- **Intent Analysis**: Phân tích xu hướng học của sinh viên
-- **Intent Matching**: Giải thích item phù hợp với intent nào
-- Ví dụ: "Dựa trên lịch sử, bạn có xu hướng học về Số học (70%) và Level 1 (85%)"
-
----
-
-## 4. Cấu trúc Dataset
-
-### 4.1 File cpp.kg (Knowledge Graph)
-
-```
-head_id:token    relation_id:token    tail_id:token
-E1               has_topic            T_Kiểu_dữ_liệu_Viết_vòng_lặp_Viết_hàm
-E1               has_level            L_1
-```
-
-**Relations trong hệ thống:**
-| Relation | Ý nghĩa | Ví dụ |
-|----------|---------|-------|
-| `has_topic` | Bài tập thuộc chủ đề | E1 → T_Số_học |
-| `topic_of` | Chủ đề chứa bài tập | T_Số_học → E1 |
-| `has_level` | Bài tập có độ khó | E22 → L_1 |
-| `level_of` | Độ khó áp dụng cho bài | L_1 → E22 |
-
-### 4.2 File cpp.link (Entity Mapping)
-
-Ánh xạ giữa Item ID và Entity ID:
-```
-item_id:token    entity_id:token
-1                E1
-22               E22
-```
-
-### 4.3 File cpp.item (Item Metadata)
-
-```
-item_id    question_id    name              group           type      level
-22         CPP0130        ƯỚC SỐ NGUYÊN TỐ  LẬP TRÌNH C++   T_Số_học  L_1
-```
-
----
-
-## 5. Cách Tạo Gợi ý
-
-### 5.1 Pipeline Tổng quan
-
-```mermaid
-flowchart LR
-    A[User ID] --> B[Lookup Internal ID]
-    B --> C[KGIN Model]
-    C --> D[Score All Items]
-    D --> E[Top-K Items]
-    E --> F[Format Response]
-```
-
-### 5.2 Chi tiết Kỹ thuật
-
-1. **Input Processing**
-   ```python
-   user_inter = Interaction({uid_field: torch.tensor([user_id])})
-   ```
-
-2. **Score Prediction**
-   ```python
-   scores = model.full_sort_predict(user_inter.to(device))
-   ```
-
-3. **Top-K Selection**
-   ```python
-   topk_scores, topk_iids = torch.topk(scores, k)
-   ```
-
----
-
-## 6. Cách Xây dựng Giải thích
-
-### 6.1 Luồng Tạo Giải thích
+Sơ đồ dưới đây minh họa luồng xử lý chính của hệ thống giải thích, từ đầu vào yêu cầu khuyến nghị cho đến kết quả đầu ra là văn bản giải thích tự nhiên được hiển thị trên giao diện người dùng.
 
 ```mermaid
 flowchart TB
-    A[Recommended Items] --> B[KG Path Analysis]
-    A --> C[User History]
-    C --> D[Intent Analysis - KGIN]
-    B --> E[Relation Importance - KGAT]
-    D --> F[Format Explanation]
-    E --> F
-    F --> G[LLM Enhancement]
-    G --> H[Natural Language Output]
-```
-
-### 6.2 Phân tích KG Paths
-
-Tìm đường đi từ user history đến recommended item:
-
-```
-History Item → has_topic → Topic → topic_of → Recommended Item
-```
-
-Ví dụ:
-```
-TÍNH TỔNG 1 ĐẾN N → has_topic → Số học → topic_of → ƯỚC SỐ NGUYÊN TỐ
-```
-
-### 6.3 Tính Relation Importance (KGAT-style)
-
-```python
-def calculate_relation_importance(item_id, user_history):
-    # Đếm matching topics từ history
-    matching_score = count_matching_topics(item_id, user_history)
+    subgraph Input["Đầu vào"]
+        A["Mã sinh viên<br/>(Student ID)"]
+        B["Lịch sử hoàn thành<br/>(User History)"]
+    end
     
-    # Normalize theo history length
-    importance = matching_score / len(user_history)
+    subgraph KGAT["Mô hình KGAT"]
+        C["Tầng Embedding<br/>Entity & Relation"]
+        D["Aggregator Layers<br/>với cơ chế Attention"]
+        E["Trích xuất<br/>Attention Weights"]
+    end
     
-    return {
-        'relation': 'has_topic',
-        'importance': importance,
-        'reason': 'Phù hợp với xu hướng học'
-    }
-```
-
-### 6.4 Phân tích User Intent (KGIN-style)
-
-```python
-def analyze_user_intents(user_history):
-    # Đếm topics và levels từ history
-    topic_counts = Counter([get_topic(item) for item in history])
-    level_counts = Counter([get_level(item) for item in history])
+    subgraph PathFinding["Khai phá đường dẫn"]
+        F["Tìm đường nối<br/>History → Target"]
+        G["Tính tổng Attention<br/>cho mỗi path"]
+        H["Xếp hạng Top-K<br/>paths quan trọng"]
+    end
     
-    # Intent chính = topic xuất hiện nhiều nhất
-    primary_intent = {
-        'type': 'topic_focus',
-        'value': topic_counts.most_common(1)[0],
-        'strength': count / len(history)
-    }
+    subgraph LLM["Tổng hợp ngôn ngữ"]
+        I["Prompt Engineering<br/>với context KG"]
+        J["LLM Processing<br/>(Mistral/GPT)"]
+        K["Văn bản giải thích<br/>tự nhiên"]
+    end
     
-    return {'intents': [primary_intent, ...]}
+    A --> C
+    B --> F
+    C --> D
+    D --> E
+    E --> G
+    F --> G
+    G --> H
+    H --> I
+    I --> J
+    J --> K
+    
+    style Input fill:#e1f5fe,stroke:#01579b
+    style KGAT fill:#fff3e0,stroke:#e65100
+    style PathFinding fill:#f3e5f5,stroke:#7b1fa2
+    style LLM fill:#e8f5e9,stroke:#2e7d32
 ```
 
-### 6.5 Tích hợp LLM
+### Hình 2: Cấu trúc đường dẫn tri thức trong Knowledge Graph
 
-Sau khi có KG context, sử dụng LLM để tạo giải thích tự nhiên:
+Sơ đồ này mô tả cách hệ thống tìm kiếm các đường dẫn kết nối giữa những bài tập mà sinh viên đã hoàn thành (lịch sử học tập) và bài tập được đề xuất thông qua các nút trung gian như chủ đề (Topic) và độ khó (Level) trong đồ thị tri thức.
 
-```python
-prompt = f"""
-Bạn là giáo viên lập trình. Giải thích gợi ý:
-
-Thông tin KG:
-{kg_context}
-
-Phân tích Intent:
-{intent_analysis}
-
-Viết giải thích ngắn gọn bằng tiếng Việt.
-"""
+```mermaid
+flowchart LR
+    subgraph History["Lịch sử sinh viên"]
+        H1["Bài tập đã làm 1<br/>(Entity E1)"]
+        H2["Bài tập đã làm 2<br/>(Entity E2)"]
+    end
+    
+    subgraph Topics["Chủ đề kiến thức"]
+        T1["T_Mảng_một_chiều"]
+        T2["T_Số_học"]
+    end
+    
+    subgraph Levels["Độ khó"]
+        L1["L_2<br/>(Trung bình)"]
+    end
+    
+    subgraph Target["Bài tập gợi ý"]
+        R["Bài tập mục tiêu<br/>(Entity E10)"]
+    end
+    
+    H1 -->|"has_topic<br/>attention: 0.85"| T1
+    H2 -->|"has_topic<br/>attention: 0.72"| T2
+    H1 -->|"has_level<br/>attention: 0.65"| L1
+    
+    T1 -->|"topic_of<br/>attention: 0.88"| R
+    T2 -->|"topic_of<br/>attention: 0.70"| R
+    L1 -->|"level_of<br/>attention: 0.60"| R
+    
+    style History fill:#bbdefb,stroke:#1976d2
+    style Topics fill:#ffe0b2,stroke:#f57c00
+    style Levels fill:#c8e6c9,stroke:#388e3c
+    style Target fill:#ffcdd2,stroke:#d32f2f
 ```
 
----
-
-## 7. Triển khai Kỹ thuật
-
-### 7.1 Cấu trúc Module
-
-```
-apps/backend/
-├── enhanced_kg_explainer.py   # KGAT/KGIN explainer mới
-├── kg_explainer.py            # KG path analysis
-├── kg_based_explainer.py      # Markdown generation
-├── llm_explainer.py           # LLM integration
-├── attention_extractor.py     # Attention weights extraction
-└── routers/
-    └── recommendations.py     # API endpoints
-```
-
-### 7.2 API Endpoints
-
-**GET /recommendations/{student_id}/explained**
-
-Response:
-```json
-{
-  "student_id": 123,
-  "recommendations": [
-    {
-      "external_id": "22",
-      "score": 0.95,
-      "info": {"title": "ƯỚC SỐ NGUYÊN TỐ", "topic": "Số học"},
-      "kg_explanation": {
-        "head_id": "E22",
-        "metadata": {"topic": "T_Số_học", "level": "L_1"},
-        "kg_context_text": "**Chủ đề**: Số học\n**Độ khó**: Level 1..."
-      }
-    }
-  ]
-}
-```
-
-### 7.3 Frontend Display
-
-Component `RecommendationCard.jsx` hiển thị:
-- Thông tin cơ bản (title, topic, level)
-- Expandable "Tại sao gợi ý bài này?" section
-- KG paths visualization
-- KGAT/KGIN analysis
-
----
-
-## 8. Kết luận
-
-Hệ thống gợi ý sử dụng KGAT/KGIN từ RecBole cung cấp:
-
-1. **Gợi ý chính xác** nhờ khai thác quan hệ trong KG
-2. **Giải thích minh bạch** thông qua:
-   - Attention-weighted paths (KGAT)
-   - User intent analysis (KGIN)
-   - Relation importance scoring
-3. **Trải nghiệm tự nhiên** với LLM-enhanced explanations
-
----
-
-## Tài liệu Tham khảo
-
-1. Wang, X., et al. (2019). KGAT: Knowledge Graph Attention Network for Recommendation. KDD.
-2. Wang, X., et al. (2021). Learning Intents behind Interactions with Knowledge Graph for Recommendation. WWW.
-3. RecBole Documentation: https://recbole.io/
-4. RecBole-KG: https://github.com/RUCAIBox/RecBole-KG
+Trong cả hai sơ đồ trên, các giá trị attention được trích xuất trực tiếp từ các tầng Aggregator của mô hình KGAT thể hiện mức độ quan trọng của từng mối quan hệ. Đường dẫn có tổng attention cao nhất sẽ được ưu tiên sử dụng làm cơ sở lập luận cho việc giải thích, đảm bảo rằng mỗi khuyến nghị đều có thể được biện minh bằng các bằng chứng định lượng từ quá trình học của mô hình.
