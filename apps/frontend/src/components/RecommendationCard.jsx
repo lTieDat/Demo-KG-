@@ -13,6 +13,7 @@ export default function RecommendationCard({ recommendation, index, getDifficult
     // Check if explanation contains KGAT/KGIN analysis markers
     const hasEnhancedAnalysis = hasKgExplanation && (
         kg_explanation.kg_context_text.includes('KGAT') || 
+        kg_explanation.kg_context_text.includes('EduKGAT') || 
         kg_explanation.kg_context_text.includes('KGIN') ||
         kg_explanation.kg_context_text.includes('trọng số')
     );
@@ -30,7 +31,7 @@ export default function RecommendationCard({ recommendation, index, getDifficult
                         </div>
                         <div>
                             <h3 className="font-bold text-lg text-slate-800 group-hover:text-blue-600 transition-colors">
-                                {info.title}
+                                {info.title || `Bài tập ${external_id}`}
                             </h3>
                             <p className="text-sm text-slate-500">ID: {external_id}</p>
                         </div>
@@ -48,7 +49,7 @@ export default function RecommendationCard({ recommendation, index, getDifficult
                     {hasEnhancedAnalysis && (
                         <span className="px-3 py-1 text-xs rounded-full bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1">
                             <Sparkles className="h-3 w-3" />
-                            KGAT/KGIN
+                            Phân tích EduKGAT
                         </span>
                     )}
                 </div>
@@ -61,7 +62,7 @@ export default function RecommendationCard({ recommendation, index, getDifficult
                             className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors w-full"
                         >
                             <Info className="h-4 w-4" />
-                            <span>Tại sao gợi ý bài này? (KG Analysis)</span>
+                            <span>Tại sao gợi ý bài này? (Phân tích KG)</span>
                             {showKgDetails ? (
                                 <ChevronUp className="h-4 w-4 ml-auto" />
                             ) : (
@@ -90,12 +91,12 @@ export default function RecommendationCard({ recommendation, index, getDifficult
                                     </ReactMarkdown>
                                 </div>
 
-                                {/* KG Paths visualization */}
+                                {/* KG Paths visualization - Optional if paths exist in data */}
                                 {kg_explanation.paths_from_history && kg_explanation.paths_from_history.length > 0 && (
                                     <div className="mt-4 pt-4 border-t border-blue-200">
                                         <div className="flex items-center gap-2 mb-2">
                                             <GitBranch className="h-4 w-4 text-blue-700" />
-                                            <p className="text-xs font-semibold text-blue-800">Knowledge Graph Paths:</p>
+                                            <p className="text-xs font-semibold text-blue-800">Các đường dẫn tri thức:</p>
                                         </div>
                                         <div className="space-y-2">
                                             {kg_explanation.paths_from_history.slice(0, 3).map((pathInfo, idx) => (
@@ -106,8 +107,6 @@ export default function RecommendationCard({ recommendation, index, getDifficult
                                         </div>
                                     </div>
                                 )}
-
-                                {/* Shared entities now integrated into kg_context_text */}
                             </div>
                         )}
                     </div>
@@ -116,4 +115,3 @@ export default function RecommendationCard({ recommendation, index, getDifficult
         </Card>
     );
 }
-

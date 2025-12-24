@@ -56,6 +56,9 @@ async def list_models():
 
 @router.post("/load")
 async def load_model(request: ModelLoadRequest, manager = Depends(get_model_manager)):
+    import sys
+    print(f"ROUTER: Received load request for {request.filename}")
+    sys.stdout.flush()
     model_dir = get_model_directory()
     model_path = os.path.join(model_dir, request.filename)
     

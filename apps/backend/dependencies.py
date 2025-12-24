@@ -1,61 +1,82 @@
 import os
-import sys
-from typing import Optional, Tuple, Any
 
-# NumPy 2.0 compatibility patch
-import numpy_compat
-
-# Add current directory to sys.path to allow imports from utils, etc.
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
+import traceback
 from utils.models import load_trained_model
 from item_utils import load_item_details
+try:
+    from recbole.utils import init_seed
+except ImportError:
+    pass
 
 class ModelManager:
     _instance = None
     
-    def __init__(self):
-        self.config = None
-        self.model = None
-        self.dataset = None
-        self.item_details = None
-        self.current_model_path = None
-
-    @classmethod
-    def get_instance(cls):
+    def __new__(cls):
         if cls._instance is None:
-            cls._instance = cls()
+            cls._instance = super(ModelManager, cls).__new__(cls)
+            cls._instance.model = None
+            cls._instance.dataset = None
+            cls._instance.config = None
+            cls._instance.item_details = None
+            cls._instance.current_subject = None
         return cls._instance
 
-    def load_model(self, model_path: str) -> bool:
+    def _detect_subject_from_filename(self, filename: str) -> str:
+        """Detect subject from model filename."""
+        filename_lower = filename.lower()
+        if 'algo' in filename_lower or 'ctdl' in filename_lower:
+            return 'algorithm'
+        elif 'cpp' in filename_lower:
+            return 'cpp'
+        return None
+
+    def _get_config_file(self, subject: str) -> str:
+        """Get config file path for subject."""
+        base_path = os.path.dirname(__file__)
+        if subject == 'algorithm':
+            return os.path.join(base_path, 'config_algo.yaml')
+        return os.path.join(base_path, 'config_cpp.yaml')
+
+    def load_model(self, model_path: str):
+        """Load a model from the specified path."""
         try:
-            # Check if already loaded
-            if self.current_model_path == model_path and self.model is not None:
-                return True
-                
-            print(f"Loading model from {model_path}...")
-            config, model, dataset = load_trained_model(model_path, config_file="config.yaml")
+            filename = os.path.basename(model_path)
+            subject = self._detect_subject_from_filename(filename)
             
-            if model is not None:
-                self.config = config
-                self.model = model
-                self.dataset = dataset
-                self.current_model_path = model_path
-                
-                # Load item details if not loaded
-                if self.item_details is None:
-                    self.item_details = load_item_details()
-                    
-                return True
-            return False
+            # Fallback to cpp if subject not detected, or handle error
+            if not subject:
+                print(f"Warning: Could not detect subject from {filename}, defaulting to 'cpp'")
+                subject = 'cpp'
+            
+            self.current_subject = subject
+            config_file = self._get_config_file(subject)
+            
+            print(f"Loading model for subject: {subject} using config: {config_file}")
+            
+            # Load model and dataset
+            self.model, self.dataset, self.config = load_trained_model(model_path, config_file)
+            
+            # Verify model was loaded successfully
+            if self.model is None or self.dataset is None:
+                raise Exception("Model or dataset failed to load")
+            
+            # Load item details for this subject
+            self.item_details = load_item_details(subject)
+            
+            return True
         except Exception as e:
-            print(f"Error loading model: {e}")
-            return False
+            print(f"CRITICAL ERROR loading model: {e}")
+            traceback.print_exc()
+            raise e
 
-    def get_model_components(self) -> Tuple[Any, Any, Any, Any]:
-        return self.config, self.model, self.dataset, self.item_details
+    def get_model(self):
+        return self.model, self.dataset, self.config
 
-model_manager = ModelManager.get_instance()
+    def get_item_details(self):
+        return self.item_details
+
+    def get_current_subject(self):
+        return self.current_subject
 
 def get_model_manager():
-    return model_manager
+    return ModelManager()

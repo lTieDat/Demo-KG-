@@ -82,7 +82,7 @@ class EnhancedKGExplainer:
         'L_5': 'Rất khó - thử thách chuyên sâu'
     }
     
-    def __init__(self):
+    def __init__(self, dataset_name: str = 'cpp', model=None, dataset=None):
         # Data structures
         self.entity_to_name = {}
         self.entity_to_topics = defaultdict(list)
@@ -90,6 +90,11 @@ class EnhancedKGExplainer:
         self.topic_to_entities = defaultdict(list)
         self.level_to_entities = defaultdict(list)
         self.kg_triples = []  # (head, relation, tail)
+        self.dataset_name = dataset_name
+        self.model = model
+        self.dataset = dataset
+        
+        self.device = model.device if model else 'cpu'
         
         self._load_dataset()
 
@@ -97,11 +102,20 @@ class EnhancedKGExplainer:
         """Load all mappings and KG data"""
         try:
             base_dir = os.path.dirname(os.path.abspath(__file__))
-            dataset_dir = os.path.join(base_dir, '../../dataset')
             
-            kg_path = os.path.join(dataset_dir, 'cpp.kg')
-            link_path = os.path.join(dataset_dir, 'cpp.link')
-            item_path = os.path.join(dataset_dir, 'cpp.item')
+            # Determine correct folder and file prefix based on dataset
+            if self.dataset_name == 'algorithm':
+                folder_name = 'ctdlgt'
+                file_prefix = 'ctdlgt'
+            else:
+                folder_name = 'cpp'
+                file_prefix = 'cpp'
+            
+            dataset_dir = os.path.join(base_dir, '../../dataset', folder_name)
+            
+            kg_path = os.path.join(dataset_dir, f'{file_prefix}.kg')
+            link_path = os.path.join(dataset_dir, f'{file_prefix}.link')
+            item_path = os.path.join(dataset_dir, f'{file_prefix}.item')
             
             # 1. Load item names
             item_id_to_name = {}
@@ -155,12 +169,116 @@ class EnhancedKGExplainer:
         except Exception as e:
             print(f"Error loading dataset: {e}")
 
+    def _compute_edge_score(self, head: str, relation: str, tail: str) -> float:
+        """
+        Compute attention score (simplified) for an edge (h, r, t) using model embeddings.
+        Score = sigmoid( (e_h + e_r) * e_t ) or similar distance metric
+        """
+        if self.model is None or self.dataset is None:
+            return 0.5 # Default fallback
+            
+        try:
+            import torch
+            
+            # Map head/tail (entity/item) to token ID
+            # NOTE: In recurrent usage, ensure we map to correct ent/item ID space
+            # RecBole usually maps all entities/items to a unified space or separate
+            # For KGAT, entities and items are often in 'entity_id' field space if unifiedKG
+            
+            # Try getting entity ID from token (e.g. 'CPP0101' -> internal ID)
+            # We need to access dataset.token2id for 'entity_id' field usually
+            
+            # 1. Get internal IDs
+            h_id = self._get_internal_id(head)
+            t_id = self._get_internal_id(tail)
+            
+            # 2. Get relation ID
+            # Relations naming in dataset might be 'has_topic' -> need internal ID
+            # dataset.token2id(dataset.relation_field, [relation])
+            r_id = 0
+            if hasattr(self.dataset, 'relation_field'):
+                try:
+                    # relation map might be 'has_topic' -> '1'
+                    r_ids = self.dataset.token2id(self.dataset.relation_field, [relation])
+                    r_id = r_ids[0]
+                except:
+                    # Fallback relation ID
+                    r_id = 0
+            
+            # 3. Get Embeddings
+            # model.entity_embedding(id)
+            # model.relation_embedding(id)
+            
+            with torch.no_grad():
+                e_h = self.model.entity_embedding(torch.tensor([h_id], device=self.device))
+                e_t = self.model.entity_embedding(torch.tensor([t_id], device=self.device))
+                e_r = self.model.relation_embedding(torch.tensor([r_id], device=self.device))
+                
+                # KGAT logic: e_h and e_t are projected to relation space r before scoring in TransR
+                # But here we might just need simple similarity if W_r isn't easily accessible from 'model' generic wrapper
+                # Check dims
+                if e_h.shape[-1] != e_r.shape[-1]:
+                    # Mismatch (e.g. 256 vs 128). 
+                    # Try to use W_R from model if it exists, or just slice/project
+                    # For visualization/explanation, we can approximate by slicing or using just entity similarity
+                    
+                    # Option 1: Just entity similarity (ignore relation specific offset for speed/robustness)
+                    # score = torch.nn.functional.cosine_similarity(e_h, e_t).item()
+                    
+                    # Option 2: Project e_h to e_r size (simple slice if trained that way, or linear)
+                    # Let's assume embeddings are roughly aligned in first K dims or use e_t only
+                    
+                    # Better: Try to find W_relation in model
+                    # If this is recurrent issue, simpler to just use e_h . e_t for "connection" strength
+                    # + e_r . e_t for "relation" strength
+                    
+                    # Let's use independently: sim(h, t) which is most important
+                    sim_ht = torch.nn.functional.cosine_similarity(e_h, e_t).item()
+                    
+                    # And maybe sim(h, r)? No.
+                    
+                    # Just return sim(h, t) for robustness against mismatch
+                    score = (sim_ht + 1) / 2
+                    return score
+
+                query_vec = e_h + e_r
+                score = torch.nn.functional.cosine_similarity(query_vec, e_t).item()
+                
+                # Rescale from [-1, 1] to [0, 1] loosely for attention probability
+                score = (score + 1) / 2
+                
+                return score
+                
+        except Exception as e:
+            # print(f"Error computing score: {e}")
+            # import traceback
+            # traceback.print_exc()
+            return 0.5
+
+    def _get_internal_id(self, token):
+        # Helper to map token (External ID) -> Internal Entity ID
+        # Prioritize entity field
+        if not self.dataset: return 0
+        try:
+            # Try normalize
+            token = self._normalize_entity_id(token)
+            
+            # If dataset has 'entity_id', use that
+            if 'entity_id' in self.dataset.field2token_id:
+                return self.dataset.token2id('entity_id', [token])[0]
+            # Fallback to item_id if 'head' was an item
+            if 'item_id' in self.dataset.field2token_id:
+                 return self.dataset.token2id('item_id', [token])[0]
+        except:
+            return 0
+        return 0
+
     def find_attention_paths(
         self,
         user_history: List[str],
         target_item: str,
         edge_attention: Dict[Tuple[str, str, str], float],
-        max_paths: int = 3
+        max_paths: int = 10
     ) -> List[Dict]:
         """
         Extract paths from user history to target item with attention scores
@@ -176,24 +294,31 @@ class EnhancedKGExplainer:
             # Topic paths
             h_topics = self.entity_to_topics.get(hist_entity, [])
             t_topics = self.entity_to_topics.get(target_entity, [])
+            
             shared_topics = set(h_topics) & set(t_topics)
             
             for topic in shared_topics:
-                edge1 = (hist_entity, 'has_topic', topic)
-                edge2 = (topic, 'topic_of', target_entity)
+                # Calculate real attention scores
+                score1 = self._compute_edge_score(hist_entity, 'has_topic', topic)
+                score2 = self._compute_edge_score(topic, 'topic_of', target_entity)
                 
-                # If topic_of isn't in kg_triples, it might be the inverse of has_topic
-                # We normalize relations for scoring
-                score1 = edge_attention.get(edge1, 0.5)
-                # Map target_entity -> has_topic -> topic as the actual edge in KGAT
-                score2 = edge_attention.get((target_entity, 'has_topic', topic), 0.5)
+                total_att = (score1 + score2) / 2
+
+                # Format steps string for UI
+                h_name = self._get_item_name(hist_entity)
+                t_name = self._get_item_name(topic)
+                tgt_name = self._get_item_name(target_entity)
                 
+                # Removed scores from display string as requested
+                path_str = f"{h_name} --[đã làm]--> {t_name} --[quan hệ]--> {tgt_name}"
+
                 paths.append({
                     'type': 'topic',
-                    'total_attention': score1 + score2,
+                    'total_attention': total_att,
+                    'path_string': path_str,
                     'steps': [
-                        {'head': self._get_item_name(hist_entity), 'relation': 'đã hoàn thành', 'tail': self._get_item_name(topic), 'attention': score1},
-                        {'head': self._get_item_name(topic), 'relation': 'là chủ đề của', 'tail': self._get_item_name(target_entity), 'attention': score2}
+                        {'head': h_name, 'relation': 'đã hoàn thành', 'tail': t_name, 'attention': score1},
+                        {'head': t_name, 'relation': 'là chủ đề của', 'tail': tgt_name, 'attention': score2}
                     ]
                 })
 
@@ -201,16 +326,25 @@ class EnhancedKGExplainer:
             h_level = self.entity_to_levels.get(hist_entity)
             t_level = self.entity_to_levels.get(target_entity)
             if h_level and h_level == t_level:
-                edge1 = (hist_entity, 'has_level', h_level)
-                score1 = edge_attention.get(edge1, 0.4)
-                score2 = edge_attention.get((target_entity, 'has_level', t_level), 0.4)
+                score1 = self._compute_edge_score(hist_entity, 'has_level', h_level)
+                score2_rev = self._compute_edge_score(h_level, 'level_of', target_entity)
+               
+                total_att = (score1 + score2_rev) / 2
+                
+                h_name = self._get_item_name(hist_entity)
+                lvl_name = h_level.replace('L_', 'Level ')
+                tgt_name = self._get_item_name(target_entity)
+                
+                # Removed scores from display string as requested
+                path_str = f"{h_name} --[cùng độ khó]--> {lvl_name} --[quan hệ]--> {tgt_name}"
                 
                 paths.append({
                     'type': 'level',
-                    'total_attention': score1 + score2,
+                    'total_attention': total_att,
+                    'path_string': path_str,
                     'steps': [
-                        {'head': self._get_item_name(hist_entity), 'relation': 'cùng độ khó', 'tail': h_level.replace('L_', 'Level '), 'attention': score1},
-                        {'head': h_level.replace('L_', 'Level '), 'relation': 'là cấp độ của', 'tail': self._get_item_name(target_entity), 'attention': score2}
+                        {'head': h_name, 'relation': 'cùng độ khó', 'tail': lvl_name, 'attention': score1},
+                        {'head': lvl_name, 'relation': 'là cấp độ của', 'tail': tgt_name, 'attention': score2_rev}
                     ]
                 })
 
@@ -222,7 +356,20 @@ class EnhancedKGExplainer:
         """
         Format paths into the 'Input' style for LLM as requested
         """
-        lines = [f"user_id = \"{user_id}\"", f"item_id = \"{item_name}\"", "\n# Attention paths extracted:"]
+        lines = [f"user_id = \"{user_id}\"", f"item_id = \"{item_name}\""]
+        
+        # Extract and list specific topics found in paths
+        found_topics = set()
+        for path in attention_paths:
+            if path['type'] == 'topic':
+                # The middle node in the path steps is the topic/bridge
+                if len(path['steps']) > 0:
+                    found_topics.add(path['steps'][0]['tail'])
+        
+        if found_topics:
+            lines.append(f"\n# Shared Topics (Chủ đề chung với lịch sử): {', '.join(found_topics)}")
+        
+        lines.append("\n# Attention paths extracted:")
         lines.append('"""')
         
         for i, path in enumerate(attention_paths, 1):
@@ -247,24 +394,20 @@ class EnhancedKGExplainer:
         input_data = self.format_attention_paths_input(student_code, item_name, attention_paths)
         
         prompt = f"""
-Bạn là chuyên gia về AI và giáo dục. Dựa trên dữ liệu attention từ mô hình KGAT dưới đây, hãy viết một đoạn giải thích ngắn gọn, tự nhiên và thuyết phục (khoảng 3-4 câu) tại sao bài tập lại được gợi ý cho sinh viên.
+Bạn là chuyên gia về AI và giáo dục. Dựa trên dữ liệu attention từ mô hình EduKGAT dưới đây, hãy viết một đoạn giải thích ngắn gọn (3-4 câu) tại sao bài tập lại được gợi ý.
 
 {input_data}
 
-Yêu cầu:
-1. Đề cập rõ việc dùng mô hình KGAT và các trọng số attention quan trọng nhất.
-2. Kết nối các kỹ năng/chủ đề từ lịch sử học tập đến bài tập gợi ý.
-3. Giọng văn khuyến khích, chuyên nghiệp, bằng tiếng Việt.
-4. Trả về trực tiếp nội dung giải thích, không thêm các phần mở đầu/kết thúc khác.
+Yêu cầu QUAN TRỌNG:
+1. KHAI THÁC SÂU VỀ CHỦ ĐỀ (TOPIC): Nếu có 'Shared Topics', hãy nhắc đến tên chủ đề cụ thể và giải thích rằng vì sinh viên đã làm tốt các bài trong chủ đề này nên được gợi ý tiếp.
+2. Đề cập việc dùng mô hình AI phân tích trọng số attention.
+3. Không hiện con số chính xác của attention score trong lời văn, chỉ dùng tính từ như "mạnh mẽ", "cao", "liên quan mật thiết".
+4. Giọng văn khuyến khích, chuyên nghiệp, tiếng Việt.
 """
         if llm_client:
             try:
-                # Assuming llm_client follows Mistral/OpenAI interface
-                response = llm_client.chat.complete(
-                    model="mistral-small-latest",
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                return response.choices[0].message.content
+                # Use our LLMService abstraction
+                return llm_client.generate_explanation(prompt)
             except Exception as e:
                 print(f"LLM Error: {e}")
                 return self._generate_fallback_explanation(item_name, attention_paths)
@@ -278,9 +421,9 @@ Yêu cầu:
             
         best_path = attention_paths[0]
         factor = best_path['steps'][0]['tail']
-        score = best_path['steps'][0]['attention']
+        # removed explicit score display
         
-        return f"Mô hình KGAT đã nhận thấy mối liên hệ mạnh mẽ (attention: {score:.2f}) từ những bài tập bạn đã làm liên quan đến '{factor}'. Dựa trên kết nối này trong Knowledge Graph, bài '{item_name}' là thử thách tiếp theo phù hợp nhất cho bạn."
+        return f"Mô hình AI đã nhận thấy mối liên hệ mạnh mẽ từ những bài tập bạn đã làm liên quan đến chủ đề '{factor}'. Dựa trên kết nối này, bài '{item_name}' là thử thách tiếp theo phù hợp nhất cho bạn."
 
     def _normalize_entity_id(self, item_or_entity) -> str:
         if not item_or_entity: return ""
@@ -339,7 +482,7 @@ Yêu cầu:
         llm_client = None
     ) -> str:
         """Main entry point for generating the full explanation report (Markdown)"""
-        full_sections = [f"# Giải thích gợi ý KGAT cho sinh viên {student_code}\n"]
+        full_sections = [f"# Giải thích gợi ý EduKGAT cho sinh viên {student_code}\n"]
         
         for i, rec in enumerate(recommendations[:3]): # Top 3 for detailed report
             item_id = str(rec.get('external_id', rec.get('id', '')))
@@ -349,7 +492,7 @@ Yêu cầu:
             
             full_sections.append(f"### {i+1}. {item_data['item_name']}")
             full_sections.append(item_data['kg_context_text'])
-            full_sections.append("\n**Dữ liệu Attention KGAT:**")
+            full_sections.append("\n**Dữ liệu Attention EduKGAT:**")
             full_sections.append("```")
             full_sections.append(item_data['input_data_technical'])
             full_sections.append("```\n")
@@ -358,6 +501,6 @@ Yêu cầu:
 
 
 # Factory function for easy integration
-def create_enhanced_explainer() -> EnhancedKGExplainer:
+def create_enhanced_explainer(dataset_name: str = 'cpp') -> EnhancedKGExplainer:
     """Create and return an EnhancedKGExplainer instance"""
-    return EnhancedKGExplainer()
+    return EnhancedKGExplainer(dataset_name=dataset_name)

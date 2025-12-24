@@ -2,3 +2,10 @@ data_path: ../../dataset/
 dataset: cpp
 user_inter_num_interval: '[0,inf)'
 embedding_size: 64
+load_col:
+  inter: [user_id, item_id, timestamp, correct]
+  user: [user_id, student_id, name]
+  item: [item_id, question_id, name, group, type, level]
+  kg: [head_id, relation_id, tail_id]
+  entity: [entity_id, question_id, name, group, type, level]
+  link: [item_id, entity_id]

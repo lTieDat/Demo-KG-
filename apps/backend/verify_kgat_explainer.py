@@ -51,6 +51,43 @@ def test_explainer():
     print("\nFallback Explanation Output:")
     safe_print(data['kg_context_text'])
     
+    # VERIFICATION ASSERTIONS
+    print("\n--- Running Verification Assertions ---")
+    
+    # 1. Check for score removal in path strings
+    # We expect "A --[rel]--> B" NOT "A --[rel]--> B (0.xx)"
+    has_scores = False
+    for path in data['paths_from_history']:
+        path_str = path['path_string']
+        # Simple check for parenthesis with numbers inside
+        if '(' in path_str and ')' in path_str:
+            # It might have other parenthesis, but let's check if it looks like score
+            import re
+            if re.search(r'\(\d+\.\d+\)', path_str):
+                has_scores = True
+                print(f"FAILED: Found score in path: {path_str}")
+    
+    if not has_scores:
+        print("PASSED: No scores found in path display strings.")
+        
+    # 2. Check for Shared Topics section in LLM input
+    if "# Shared Topics" in data['input_data_technical']:
+         print("PASSED: 'Shared Topics' section found in LLM input.")
+    else:
+         print("FAILED: 'Shared Topics' section NOT found in LLM input.")
+
+    # 3. Check fallback explanation for natural language score usage (we want "strong", not "0.89")
+    fallback_text = data['kg_context_text']
+    if any(char.isdigit() for char in fallback_text if char not in ['1', '2', '3']): # Allow small numbers like item names
+        # This is a loose check, but we mainly want to ensure "0.89" isn't there
+        if "0." in fallback_text:
+             print(f"WARNING: Found decimal numbers in fallback text: {fallback_text}")
+        else:
+             print("PASSED: No obvious scores in fallback text.")
+    else:
+        print("PASSED: No scores in fallback text.")
+
+    
     # 2. Test full report
     print("\n--- Testing explain_recommendations (Full Report) ---")
     recommendations = [
@@ -58,7 +95,8 @@ def test_explainer():
         {'id': 'E4', 'name': 'Heap Sort'}
     ]
     report = explainer.explain_recommendations(user_id, recommendations, user_history, edge_attention)
-    safe_print(report)
+    # safe_print(report)
+    print("Report generated successfully.")
 
 if __name__ == "__main__":
     test_explainer()

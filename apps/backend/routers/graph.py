@@ -1,26 +1,73 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, List
 import os
+from dependencies import get_model_manager
 
 router = APIRouter(prefix="/graph", tags=["graph"])
 
 DATASET_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "dataset")
 
+
+
 @router.get("/knowledge-graph")
-async def get_knowledge_graph(limit: int = 10000):
+async def get_knowledge_graph(
+    limit: int = 10000,
+    subject: str = None,
+    manager = Depends(get_model_manager)
+):
     """
     Get knowledge graph data from dataset.
     Returns nodes and links for visualization.
-    
+
     Args:
         limit: Maximum number of relationships to return (default: 10000)
     """
     try:
-        # Use dataset files (no .normalized extension)
-        kg_file = os.path.join(DATASET_PATH, "cpp.kg")
-        item_file = os.path.join(DATASET_PATH, "cpp.item")
-        link_file = os.path.join(DATASET_PATH, "cpp.link")
-        
+        # Determine subject: query param > loaded model > default (if any)
+        target_subject = subject
+        if not target_subject:
+            target_subject = manager.get_current_subject()
+
+        if not target_subject:
+            # Fallback or error if no subject can be determined
+            # But for exploration we might want to allow default if files exist
+            # For now, let's error if we can't determine subject
+            raise HTTPException(
+                status_code=400,
+                detail="No subject selected. Please select a subject or load a model first."
+            )
+
+        # Load data based on subject
+        # We should use manager's config logic or simple mapping
+        if target_subject == 'algorithm':
+            dataset_name = 'ctdlgt'
+            dataset_path = 'dataset/ctdlgt'
+        elif target_subject == 'cpp':
+            dataset_name = 'cpp'
+            dataset_path = 'dataset/cpp'
+        else:
+            # Try to infer from current model if available
+            if manager.current_subject == target_subject:
+                 # Use manager's paths if matches
+                 pass
+            else:
+                 # Default fallback or error
+                 dataset_name = target_subject
+                 # specific paths can be tricky without config, assume standard layout
+                 dataset_path = f'dataset/{target_subject}'
+
+        # Construct paths
+        # Note: We are navigating relative to apps/backend/routers/../../..
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+        data_dir = os.path.join(base_path, dataset_path)
+
+        kg_file = os.path.join(data_dir, f"{dataset_name}.kg")
+        item_file = os.path.join(data_dir, f"{dataset_name}.item")
+        link_file = os.path.join(data_dir, f"{dataset_name}.link")
+
+        if not os.path.exists(kg_file):
+            raise HTTPException(status_code=404, detail=f"Knowledge graph file not found for subject: {target_subject}")
+
         # Read item metadata
         # Format: item_id, question_id, name, group, type (topic), level
         items_metadata = {}

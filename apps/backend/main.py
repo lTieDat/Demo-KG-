@@ -1,6 +1,10 @@
-from fastapi import FastAPI
+import numpy_compat
+import patch_recbole
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from routers import models, students, recommendations, graph
+from routers import models, students, recommendations, graph, history
+import traceback
+import time
 from dotenv import load_dotenv
 import os
 
@@ -24,10 +28,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Debug middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    import sys
+    start_time = time.time()
+    print(f"DEBUG: Incoming request: {request.method} {request.url}")
+    sys.stdout.flush()
+    try:
+        response = await call_next(request)
+        process_time = (time.time() - start_time) * 1000
+        print(f"DEBUG: Response status: {response.status_code} (took {process_time:.2f}ms)")
+        return response
+    except Exception as e:
+        print(f"DEBUG: UNHANDLED EXCEPTION in middleware: {e}")
+        traceback.print_exc()
+        raise e
+
 # Include routers
 app.include_router(models.router, prefix="/api/models", tags=["models"])
 app.include_router(students.router, prefix="/api/students", tags=["students"])
 app.include_router(recommendations.router, prefix="/api/recommendations", tags=["recommendations"])
+app.include_router(history.router, prefix="/api", tags=["history"])
 app.include_router(graph.router, prefix="/api")
 
 @app.get("/")

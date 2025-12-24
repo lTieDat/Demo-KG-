@@ -1,134 +1,83 @@
 import os
 import pandas as pd
-from pathlib import Path
 
-
-def load_item_details():
+def load_item_details(dataset_name='cpp'):
     """
-    Load thông tin chi tiết về bài tập từ file .item
-
-    Returns:
-        dict: Dictionary mapping item_id -> item_info
-    """
-    # Sử dụng relative paths dựa trên vị trí của file này
-    base_dir = Path(__file__).parent
+    Load item details based on the dataset name.
     
-    # Các đường dẫn có thể chứa file
-    possible_paths = [
-        base_dir / "../../dataset" / "cpp.item",  # From apps/backend to root/dataset
-        base_dir / "dataset" / "cpp.item",
-        Path.cwd() / "dataset" / "cpp.item",
-        base_dir.parent / "Web" / "dataset" / "cpp.item",
-    ]
+    Args:
+        dataset_name (str): The name of the dataset ('algorithm' or 'cpp')
+    """
+    
+    # __file__ is apps/backend/item_utils.py
+    # dirname(file) is apps/backend
+    # dirname(dirname(file)) is apps
+    # dirname(dirname(dirname(file))) is project root (e:\DoAn\Web)
+    base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    
+    if dataset_name == 'algorithm':
+        dataset_folder = 'dataset/ctdlgt'
+        item_file = 'ctdlgt.item'
+    else:
+        dataset_folder = 'dataset/cpp'
+        item_file = 'cpp.item'
+        
+    item_path = os.path.join(base_path, dataset_folder, item_file)
+    
+    # Fallback to current working directory if not found
+    if not os.path.exists(item_path):
+        item_path = os.path.abspath(os.path.join(dataset_folder, item_file))
 
-    item_file = None
-
-    # Thử tất cả các đường dẫn có thể
-    for path in possible_paths:
-        if path.exists():
-            item_file = str(path)
-            print(f"Found item file at: {path}")
-            break
-
-    if item_file is None:
-        print(f"Warning: Item file not found in any of these paths:")
-        for path in possible_paths:
-            print(f"  - {path}")
-        return {}
+    items = {}
+    
+    def clean_value(val, field_type):
+        if not val: return val
+        # Remove RecBole prefixes
+        val = str(val).replace('T_', '').replace('L_', '').replace('_', ' ')
+        return val.strip()
 
     try:
-        # Đọc file với tab separator
-        df = pd.read_csv(item_file, sep="\t", encoding="utf-8")
-
-        # Tạo dictionary mapping
-        item_details = {}
-
-        for _, row in df.iterrows():
-            # cpp.item format: item_id, question_id, name, group, type (topic), level
-            item_id = str(row["item_id:token"])
-            question_id = row["question_id:token"] if pd.notna(row["question_id:token"]) else "N/A"
-            name = row["name:token_seq"] if pd.notna(row["name:token_seq"]) else "N/A"
-            group = row["group:token_seq"] if pd.notna(row["group:token_seq"]) else "N/A"
-            topic = row["type:token_seq"] if pd.notna(row["type:token_seq"]) else "N/A"
-            level = row["level:token"] if pd.notna(row["level:token"]) else "N/A"
-
-            # Clean up topic and level display
-            topic_display = topic.replace('T_', '').replace('_', ' ') if topic != "N/A" else "N/A"
-            level_display = level.replace('L_', 'Level ') if level != "N/A" else "N/A"
-
-            item_details[item_id] = {
-                "title": name,  # Use name as title
-                "question_id": question_id,
-                "topic": topic_display,
-                "sub_topic": group,  # Use group as sub_topic
-                "difficulty": level_display,
-            }
-
-        print(f"Loaded {len(item_details)} items from {item_file}")
-        return item_details
+        if os.path.exists(item_path):
+             with open(item_path, 'r', encoding='utf-8') as f:
+                header_line = f.readline().strip()
+                if not header_line:
+                    return {}
+                header = header_line.split('\t')
+                
+                for line in f:
+                    parts = line.strip().split('\t')
+                    if not parts or not parts[0]:
+                        continue
+                        
+                    item_id = parts[0]
+                    item_data = {}
+                    
+                    # map known headers
+                    for i, col in enumerate(header):
+                        if i < len(parts):
+                            clean_col = col.split(':')[0]
+                            val = parts[i]
+                            # Clean specific fields
+                            if clean_col in ['type', 'level', 'group']:
+                                val = clean_value(val, clean_col)
+                            item_data[clean_col] = val
+                    
+                    # Ensure 'name' or 'title' mapping for standard UI fields
+                    if 'name' in item_data and 'title' not in item_data:
+                        item_data['title'] = item_data['name']
+                    if 'type' in item_data and 'topic' not in item_data:
+                        item_data['topic'] = item_data['type']
+                    if 'level' in item_data and 'difficulty' not in item_data:
+                        item_data['difficulty'] = item_data['level']
+                        
+                    items[item_id] = item_data
+        else:
+            print(f"Warning: Item file not found at {item_path}")
 
     except Exception as e:
-        print(f"Error loading item file {item_file}: {e}")
+        print(f"Error loading item details from {item_path}: {e}")
+        import traceback
+        traceback.print_exc()
         return {}
 
-
-def get_item_display_info(item_id, item_details):
-    """
-    Lấy thông tin hiển thị cho một bài tập
-
-    Args:
-        item_id: ID của bài tập
-        item_details: Dictionary chứa thông tin bài tập
-
-    Returns:
-        dict: Thông tin để hiển thị trong card
-    """
-    if item_id in item_details:
-        info = item_details[item_id]
-        return {
-            "title": info["title"],
-            "topic": info["topic"],
-            "sub_topic": info["sub_topic"],
-            "difficulty": info["difficulty"],
-        }
-    else:
-        return {
-            "title": "Tên không xác định",
-            "topic": "Chủ đề không xác định",
-            "sub_topic": "Chủ đề con không xác định",
-            "difficulty": "Độ khó không xác định",
-        }
-
-
-def get_card_html(item_id, item_info):
-    """
-    Tạo HTML card cho một bài tập
-
-    Args:
-        item_id: ID của bài tập
-        item_info: Thông tin chi tiết bài tập
-
-    Returns:
-        str: HTML string cho card
-    """
-    return f"""
-    <div style="
-        border: 2px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 15px;
-        margin: 10px 0;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        transition: transform 0.2s;
-    " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-        <h4 style="color: #2c3e50; margin: 0 0 10px 0; font-weight: 600;">
-            🎯 Bài tập {item_id}
-        </h4>
-        <div style="background: white; padding: 10px; border-radius: 5px; margin: 5px 0;">
-            <p style="margin: 5px 0; color: #34495e;"><strong>📝 Tên:</strong> {item_info['title']}</p>
-            <p style="margin: 5px 0; color: #27ae60;"><strong>📚 Chủ đề:</strong> {item_info['topic']}</p>
-            <p style="margin: 5px 0; color: #3498db;"><strong>🔍 Chủ đề con:</strong> {item_info['sub_topic']}</p>
-            <p style="margin: 5px 0; color: #e74c3c;"><strong>⭐ Độ khó:</strong> {item_info['difficulty']}</p>
-        </div>
-    </div>
-    """
+    return items

@@ -1,0 +1,26 @@
+# Config for CPP Dataset
+data_path: ../../dataset
+dataset: cpp
+model: KGAT
+epochs: 50
+train_batch_size: 2048
+learner: adam
+learning_rate: 0.0001
+eval_step: 1
+valid_metric: MRR@10
+metrics: ['Recall', 'MRR', 'NDCG', 'Hit', 'Precision']
+topk: 10
+state: INFO
+show_progress: False
+save_dataset: False
+save_dataloaders: False
+seed: 2020
+reproducibility: True
+encoding: utf-8
+load_col:
+  inter: [user_id, item_id, timestamp, correct]
+  user: [user_id, student_id, name, class, major]
+  item: [item_id, question_id, name, group, type, level]
+  kg: [head_id, relation_id, tail_id]
+  entity: [entity_id, question_id, name, group, type, level]
+  link: [item_id, entity_id]
